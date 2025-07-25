@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora de Cambios</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="app.js" defer></script>
+  <style>
+    /* Animaciones y estilos comunes */
+    @keyframes fadeInUp {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in-up { animation: fadeInUp 0.6s ease-out both; }
+
+    @keyframes fadeSlideIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-slide { opacity: 0; transform: translateY(40px); animation: fadeSlideIn 0.6s forwards ease-in-out; }
+
+    @keyframes pulseScale {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    .pulse { animation: pulseScale 2s infinite; }
+
+    @keyframes pulseSlow {
+      0%,100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+    .animate-pulse-slow { animation: pulseSlow 4s infinite; }
+
+    @keyframes fade-in-glass {
+      from { opacity: 0; transform: translateY(20px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-fade-in-glass { animation: fade-in-glass 0.6s ease-out both; }
+
+    .text-glow {
+      color: #1e3a8a;
+      text-shadow: 0 0 6px rgba(30, 58, 138, 0.6);
+    }
+
+    .glow-button:hover {
+      box-shadow: 0 0 12px rgba(20,176,255,0.6), 0 0 20px rgba(20,176,255,0.3);
+    }
+    .pulse-on-hover:hover { animation: pulseScale 1s infinite; }
+
+    .ripple-button { position: relative; overflow: hidden; }
+    .ripple-button:hover { box-shadow: 0 0 10px rgba(59,130,246,0.5); }
+    @keyframes ripple { to { transform: scale(4); opacity: 0; } }
+    .ripple-button::after { content:""; position:absolute; border-radius:50%; transform:scale(0); background:rgba(255,255,255,0.4); animation:ripple 0.6s linear; pointer-events:none; }
+
+    .glass { background:rgba(255,255,255,0.6); backdrop-filter:blur(10px); box-shadow:0 8px 32px rgba(0,0,0,0.1); }
+    .shine-card { position:relative; overflow:hidden; }
+    .shine-card::before { content:''; position:absolute; top:-100%; left:-100%; width:200%; height:200%; background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,0.3)50%,transparent 70%); transform:rotate(25deg); animation:shineAnim 5s infinite; pointer-events:none; }
+    @keyframes shineAnim { 0%{ transform:translate(-100%,-100%) rotate(25deg);}100%{transform:translate(100%,100%) rotate(25deg);} }
+  </style>
+</head>
+<body class="text-gray-800 font-sans bg-gradient-to-br from-gray-100 via-teal-50 to-pink-50 bg-size-200 animate-gradientMove">
+  <header class="flex flex-col items-center py-6 fade-slide">
+    <div class="mb-4">
+      <img src="logo.png" alt="Logo"
+        class="h-24 md:h-32 lg:h-36 scale-110 hover:scale-125 transition-transform duration-500 ease-in-out" />
+    </div>
+    <div class="text-center animate-fade-in-glass">
+      <h1 class="text-4xl md:text-5xl font-bold text-blue-900 drop-shadow-lg">Calculadora de Cambios</h1>
+      <p class="text-base md:text-lg text-gray-600 mt-1 tracking-wide">De Argentina a Venezuela</p>
+    </div>
+  </header>
+
+  <!-- Tasa del Día -->
+  <section class="text-center my-10">
+    <p class="text-2xl md:text-3xl font-semibold text-gray-800 mb-1">Tasa del día</p>
+    <p id="tasaFecha" class="text-sm text-gray-500 italic mb-4">—</p>
+    <div id="tasaValue" class="shine-card w-40 h-40 md:w-48 md:h-48 bg-gradient-to-r from-blue-200 via-white to-blue-200 rounded-2xl
+         flex items-center justify-center text-5xl md:text-6xl font-extrabold text-blue-900 text-glow shadow-xl mx-auto transition-all duration-300 animate-pulse-slow">
+      –
+    </div>
+  </section>
+
+  <!-- Paso 1 -->
+  <div id="step1" class="text-center mt-10">
+    <h2 class="text-xl md:text-2xl font-semibold text-gray-800 mb-6 fade-in-up">¿Qué quieres calcular?</h2>
+    <div class="flex flex-col gap-4 items-center fade-in-up">
+      <button id="btnEnviar" class="ripple-button w-[320px] md:w-[380px] bg-gradient-to-r from-blue-200 via-white to-blue-200 hover:from-blue-100 hover:to-blue-300
+            text-base md:text-lg font-semibold py-2 px-8 rounded-xl border border-blue-800 shadow-lg transition-all duration-300 ease-in-out glow-button pulse-on-hover text-glow">
+        ¿Cuánto recibiré en bolívares?
+      </button>
+      <button id="btnLlegar" class="ripple-button w-[320px] md:w-[380px] bg-gradient-to-r from-blue-200 via-white to-blue-200 hover:from-blue-100 hover:to-blue-300
+            text-base md:text-lg font-semibold py-2 px-8 rounded-xl border border-blue-800 shadow-lg transition-all duration-300 ease-in-out glow-button pulse-on-hover text-glow">
+        ¿Cuántos pesos necesito enviar?
+      </button>
+    </div>
+    <div class="flex justify-center mt-2 fade-in-up">
+      <button id="btnUpdate" class="text-xs text-blue-700 hover:text-blue-900 transition duration-300 hover:underline focus:outline-none">
+        🔁 Actualizar tasa manualmente
+      </button>
+    </div>
+  </div>
+
+  <!-- Paso 2 -->
+  <section id="step2" class="hidden flex flex-col items-center gap-6 mt-10 fade-slide transition-all duration-500">
+    <p id="preguntaMonto" class="text-lg md:text-xl font-medium text-blue-900 mb-2 opacity-0 translate-y-4 transition-all duration-500"></p>
+    <p id="errorMonto" class="text-red-600 font-semibold hidden transition-all duration-300"></p>
+    <input id="inputMonto" type="number" placeholder="Ingresa el monto" class="bg-white/30 backdrop-blur-md border border-blue-300 rounded-xl px-6 py-4
+           w-72 text-center text-2xl font-semibold text-blue-900 placeholder:text-blue-500 placeholder:italic shadow-lg
+           focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300" />
+    <div class="flex gap-4 mt-4">
+      <button id="btnVolverPaso1" class="flex items-center justify-center bg-white/60 backdrop-blur-md border border-blue-200 rounded-xl w-12 h-12 shadow-md
+             hover:shadow-lg transition-all hover:scale-110">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" 
+             stroke-width="2" stroke="#1e3a8a" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+      </button>
+      <button id="btnCalcular" class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-lg font-semibold px-8
+             py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95">
+        Calcular
+      </button>
+    </div>
+  </section>
+
+  <!-- Resultado -->
+  <section id="resultado" class="hidden flex flex-col items-center mt-14 fade-slide transition-all duration-500">
+    <div id="resText" class="glass text-center rounded-2xl px-10 py-8 shadow-2xl max-w-md text-3xl font-extrabold text-blue-900 bg-white/20
+         backdrop-blur-xl border border-white/40 ring-1 ring-white/10 animate-fade-in-glass space-y-4"></div>
+    <div class="mt-6 flex flex-col gap-4">
+      <button id="btnRecalcular" class="bg-gradient-to-r from-gray-100 to-gray-300 hover:from-gray-200 hover:to-gray-400 text-blue-800
+             font-medium px-5 py-2 rounded-lg shadow-md transition-all duration-300 border border-gray-300 hover:shadow-lg">
+        🔁 Calcular otro
+      </button>
+      <button id="btnWhats" class="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white
+             font-semibold px-6 py-3 rounded-lg shadow-lg transition-transform duration-300 hover:scale-105">
+        📤 Proceder por WhatsApp
+      </button>
+    </div>
+  </section>
+
+  <audio id="soundSuccess" src="https://cdn.pixabay.com/download/audio/2022/10/03/audio_a69f47a883.mp3" preload="auto"></audio>
+</body>
+</html>
