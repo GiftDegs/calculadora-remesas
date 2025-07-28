@@ -60,9 +60,9 @@
     </div>
 
     <section id="step1" class="flex flex-col items-center gap-4 text-center">
-      <h2 class="text-xl font-semibold">¿Qué quieres calcular?</h2>
-      <button id="btnEnviar" class="ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105">¿Cuánto recibiré en bolívares?</button>
-      <button id="btnLlegar" class="ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105">¿Cuántos pesos necesito enviar?</button>
+      <h2 class="text-xl font-semibold">Elige una opción</h2>
+      <button id="btnEnviar" class="ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105">¿Cuántos pesos quieres enviar?</button>
+      <button id="btnLlegar" class="ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105">¿Cuánto bolívares quieres que lleguen?</button>
       <button id="btnUpdate" class="text-sm text-[#0066FF] hover:underline mt-1 dark:text-blue-300">🔁 Actualizar tasa manualmente</button>
     </section>
 
@@ -85,9 +85,9 @@
     <section id="resultado" class="hidden flex flex-col items-center gap-6">
       <div id="resTextContainer" class="relative bg-white text-gray-800 dark:bg-white rounded-xl px-6 py-8 shadow-lg flex flex-col items-center gap-4 w-full max-w-md">
         <button id="btnCompartir" title="Compartir"
-                class="absolute top-2 right-2 w-8 h-8 p-1 bg-white/90 hover:bg-blue-100 rounded-full shadow-md transition">
-          <img src="7f4abb75-d593-49bc-b2bc-617fd11d264f.png" alt="Compartir" class="w-full h-full object-contain" />
-        </button>
+        class="absolute top-2 right-2 w-10 h-10 transition transform hover:scale-110 z-10">
+  <img src="share.png" alt="Compartir" class="w-full h-full object-contain drop-shadow-md" />
+</button>
         <img src="logo.png" alt="Logo ByteTransfer" class="h-12">
         <div id="resText" class="text-center text-xl sm:text-2xl font-semibold leading-relaxed"></div>
         <p class="text-sm text-gray-400 italic mt-4">Powered by ByteTransfer</p>

@@ -133,19 +133,21 @@ btnVolverPaso1.onclick = () => {
 
 btnWhats.onclick = () => {
   const fecha = tasaFechaEl.textContent;
-  const tasaStr = parseFloat(tasa).toLocaleString('es-ES');
+  const tasaFmt = parseFloat(tasa).toLocaleString('es-ES');
   const numero = '5491157261053';
 
   const rawValue = parseFloat(inputMonto.value.trim());
-  const monto = isNaN(rawValue) ? 0 : rawValue;
-  const result = mode === 'enviar' ? Math.round(monto * parseFloat(tasa)) : Math.round(monto / parseFloat(tasa));
+  const montoIngresado = isNaN(rawValue) ? 0 : rawValue;
+  const montoCalculado = mode === 'enviar'
+    ? Math.round(montoIngresado * parseFloat(tasa))
+    : Math.round(montoIngresado / parseFloat(tasa));
 
-  const montoARS = monto.toLocaleString('es-AR');
-  const montoVES = result.toLocaleString('es-VE');
+  const ingresadoFmt = montoIngresado.toLocaleString('es-AR');
+  const calculadoFmt = montoCalculado.toLocaleString('es-VE');
 
   const txt = mode === 'enviar'
-    ? `Hola, voy a enviar $${montoARS} ARS para que se reciban Bs. ${montoVES} en Venezuela. Tasa del día ${fecha}: ${tasaStr}`
-    : `Hola, quiero que lleguen Bs. ${montoVES} en Venezuela, por eso voy a enviar $${montoARS} ARS. Tasa del día ${fecha}: ${tasaStr}`;
+    ? `Hola, voy a enviar $${ingresadoFmt} ARS para que se reciban Bs. ${calculadoFmt} en Venezuela. Tasa del día ${fecha}: ${tasaFmt}`
+    : `Hola, quiero que lleguen Bs. ${ingresadoFmt} en Venezuela, por eso voy a enviar $${calculadoFmt} ARS. Tasa del día ${fecha}: ${tasaFmt}`;
 
   window.open(`https://wa.me/${numero}?text=${encodeURIComponent(txt)}`, '_blank');
 };
@@ -183,22 +185,33 @@ toggleDark.onclick = () => {
 
 btnCompartir.onclick = async () => {
   const container = document.getElementById('resTextContainer');
-  html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
-    .then(canvas => {
-      canvas.toBlob(async blob => {
-        const file = new File([blob], 'byte-transfer-result.png', { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ title: 'Mi cálculo en ByteTransfer', text: 'Aquí tienes el cálculo 👇', files: [file] });
-          } catch (err) {
-            console.warn('Compartir cancelado:', err);
-          }
-        } else {
-          const link = document.createElement('a');
-          link.download = 'byte-transfer-result.png';
-          link.href = canvas.toDataURL();
-          link.click();
+
+  html2canvas(container, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+  }).then(canvas => {
+    canvas.toBlob(async blob => {
+      const file = new File([blob], 'byte-transfer-result.png', { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file], title: 'Mi cálculo en ByteTransfer' })) {
+        try {
+          await navigator.share({
+            title: 'Mi cálculo en ByteTransfer',
+            text: 'Este es el resultado de mi cálculo en ByteTransfer 💸',
+            files: [file],
+          });
+        } catch (err) {
+          console.warn('Compartir cancelado:', err);
         }
-      }, 'image/png');
-    });
+      } else {
+        // Fallback si el navegador no soporta .share con archivos
+        const link = document.createElement('a');
+        link.download = 'byte-transfer-result.png';
+        link.href = canvas.toDataURL();
+        link.click();
+      }
+    }, 'image/png');
+  });
 };
+
