@@ -155,10 +155,6 @@ btnCalcular.onclick = () => {
   }, 1500);
 };
 
-// El resto de tu app.js queda sin cambios, excepto donde uses .toLocaleString
-// Aplica `Intl.NumberFormat(userLocale, ...)` en los demás puntos si quieres mantener consistencia.
-
-
 // Botón recalcular
 btnRecalcular.onclick = () => {
   inputMonto.value = '';
@@ -217,6 +213,8 @@ document.querySelectorAll('.ripple-button').forEach(btn => {
 });
 
 // Input validation
+let scrollAntesDeTeclado = 0;
+
 inputMonto.addEventListener('input', () => {
   let val = inputMonto.value.replace(/[^0-9.]/g, '');
   const parts = val.split('.');
@@ -224,12 +222,20 @@ inputMonto.addEventListener('input', () => {
   if (parts[1]?.length > 2) val = parts[0] + '.' + parts[1].slice(0,2);
   inputMonto.value = val;
 });
+
 inputMonto.addEventListener('focus', () => {
+  scrollAntesDeTeclado = window.scrollY;
   setTimeout(() => inputMonto.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
 });
+
+inputMonto.addEventListener('blur', () => {
+  setTimeout(() => window.scrollTo({ top: scrollAntesDeTeclado, behavior: 'smooth' }), 150);
+});
+
 inputMonto.addEventListener('keydown', e => {
   if (e.key === 'Enter') btnCalcular.click();
 });
+
 
 // Toggle dark mode
 toggleDark.onclick = () => document.documentElement.classList.toggle('dark');
