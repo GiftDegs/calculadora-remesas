@@ -14,7 +14,7 @@ const loginEmail = document.getElementById('loginEmail');
 const loginPass = document.getElementById('loginPass');
 const loginSeccion = document.getElementById('loginSeccion');
 const contenidoPrivado = document.getElementById('contenidoPrivado');
-const ajustesPorDefecto = { ARS:10, COP:10, MXN:18, PEN:9, CLP:9, BRL:9, VES:2 };
+const ajustesPorDefecto = { ARS:8, COP:8, MXN:15, PEN:7, CLP:7, BRL:8, VES:4 };
 let datosPaises = {}, snapshotPrevio = {}, crucesAnteriores = {};
 let llamadasPendientes = 0, timerGuardar = null;
 let filtroPais = null, rolVista = "origen";
@@ -225,13 +225,22 @@ document.getElementById("btn-confirmar-binance").addEventListener("click", async
   cerrarModalConfirmacion();
 
   for (const p of paises) {
-    const fiat = p.fiat;
-    const ajuste = parseFloat(document.querySelector(`input[data-fi="${fiat}"][data-tipo="ajuste"]`)?.value) || ajustesPorDefecto[fiat];
-    if (!datosPaises[fiat]) datosPaises[fiat] = {};
-    datosPaises[fiat].ajuste = ajuste;
-    datosPaises[fiat].compra = null;
-    datosPaises[fiat].venta = null;
-  }
+  const fiat = p.fiat;
+
+  if (!datosPaises[fiat]) datosPaises[fiat] = {};
+
+  const ajusteInput = document.querySelector(`input[data-fi="${fiat}"][data-tipo="ajuste"]`);
+  const ajustePrevio = datosPaises[fiat].ajuste;
+  const ajusteNuevo = ajusteInput ? parseFloat(ajusteInput.value) : null;
+
+  datosPaises[fiat].ajuste =
+    !isNaN(ajusteNuevo) ? ajusteNuevo :
+    (ajustePrevio ?? ajustesPorDefecto[fiat]);
+
+  // Reinicia solo compra y venta para forzar el fetch nuevo
+  datosPaises[fiat].compra = null;
+  datosPaises[fiat].venta = null;
+}
 
   renderTarjetasPaises(modoEdicionActivo);
 
