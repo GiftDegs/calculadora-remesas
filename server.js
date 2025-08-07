@@ -1,5 +1,3 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -7,9 +5,11 @@ const axios = require("axios");
 
 const app = express();
 const PORT = 3000;
-const SECRET_KEY = "bytetransfer_super_secreto_2025";
 
+// Middleware
 app.use(express.json());
+app.use("/admin", express.static(path.join(__dirname, "public/admin")));
+app.use(express.static(path.join(__dirname, "public")));
 
 // Formatear tasas
 function formatearTasa(v) {
@@ -19,44 +19,7 @@ function formatearTasa(v) {
   return parseFloat(v.toFixed(6));
 }
 
-// API: Login
-app.post("/api/login", (req, res) => {
-  const { email, password } = req.body;
-  const usuariosPath = path.join(__dirname, "public", "usuarios.json");
-
-  const users = JSON.parse(fs.readFileSync(usuariosPath, "utf8"));
-  const user = users.find(u => u.email === email);
-
-  if (!user) return res.status(401).json({ error: "Usuario no encontrado" });
-
-  const claveCoincide = bcrypt.compareSync(password, user.passwordHash);
-  if (!claveCoincide) return res.status(401).json({ error: "Contraseña incorrecta" });
-
-  const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, { expiresIn: "2h" });
-  res.json({ token });
-});
-
-// Middleware de autenticación
-function verificarToken(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(403).json({ error: "Token requerido" });
-
-  const token = authHeader.split(" ")[1];
-  try {
-    const decoded = jwt.verify(token, SECRET_KEY);
-    req.usuario = decoded;
-    next();
-  } catch {
-    return res.status(403).json({ error: "Token inválido o expirado" });
-  }
-}
-
-// Ruta protegida
-app.get("/api/perfil", verificarToken, (req, res) => {
-  res.json({ mensaje: "Accediste al perfil privado", usuario: req.usuario });
-});
-
-// Snapshot
+// Obtener snapshot actual
 app.get("/api/snapshot", (req, res) => {
   const ruta = path.join(__dirname, "public", "snapshot.json");
   if (fs.existsSync(ruta)) {
@@ -67,7 +30,8 @@ app.get("/api/snapshot", (req, res) => {
   }
 });
 
-app.post("/api/guardar-snapshot", verificarToken, (req, res) => {
+// Guardar snapshot y su historial
+app.post("/api/guardar-snapshot", (req, res) => {
   const snapshotActualPath = path.join(__dirname, "public", "snapshot.json");
   const fecha = new Date().toISOString().slice(0, 10);
   const snapshotHistPath = path.join(__dirname, "public", "snapshots", `${fecha}.json`);
@@ -88,18 +52,23 @@ app.post("/api/guardar-snapshot", verificarToken, (req, res) => {
     fs.mkdirSync(dirSnapshots);
   }
 
-  fs.writeFileSync(snapshotActualPath, JSON.stringify(datos, null, 2));
-  console.log("📁 Snapshot actualizado");
+  try {
+    fs.writeFileSync(snapshotActualPath, JSON.stringify(datos, null, 2));
+    console.log("📁 Snapshot actualizado");
 
-  if (!fs.existsSync(snapshotHistPath)) {
-    fs.writeFileSync(snapshotHistPath, JSON.stringify(datos, null, 2));
-    console.log("📦 Snapshot histórico guardado:", fecha);
+    if (!fs.existsSync(snapshotHistPath)) {
+      fs.writeFileSync(snapshotHistPath, JSON.stringify(datos, null, 2));
+      console.log("📦 Snapshot histórico guardado:", fecha);
+    }
+
+    res.json({ status: "ok" });
+  } catch (err) {
+    console.error("❌ Error al guardar snapshot:", err);
+    res.status(500).json({ error: "Error al guardar snapshot" });
   }
-
-  res.json({ status: "ok" });
 });
 
-// Binance
+// Obtener precios desde Binance
 app.post("/api/binance", async (req, res) => {
   const { fiat, tradeType, page = 1, payTypes = [], transAmount } = req.body;
 
@@ -126,10 +95,7 @@ app.post("/api/binance", async (req, res) => {
   }
 });
 
-// Archivos estáticos
-app.use("/admin", express.static(path.join(__dirname, "public/admin")));
-app.use(express.static(path.join(__dirname, "public")));
-
+// Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en: http://localhost:${PORT}`);
 });
