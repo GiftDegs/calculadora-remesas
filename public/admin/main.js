@@ -74,11 +74,10 @@ async function guardarSnapshot(datos) {
   function renderTarjetasPaises(modoEdicion = false) {
   const cont = document.getElementById("tarjetas-paises") || document.createElement("div");
   cont.id = "tarjetas-paises";
-  cont.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8";
-  const wrapper = document.querySelector(".max-w-5xl");
+  cont.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-6 mb-8";
+    const wrapper = document.querySelector(".max-w-5xl");
   const tablaAntigua = document.getElementById("tabla-paises-body")?.parentElement?.parentElement;
   if (tablaAntigua) tablaAntigua.remove();
-  wrapper.prepend(cont);
   cont.innerHTML = "";
 
   paises.forEach(p => {
@@ -89,7 +88,8 @@ async function guardarSnapshot(datos) {
     const emoji = p.emoji || "🌐";
 
     const tarjeta = document.createElement("div");
-    tarjeta.className = "bg-white text-gray-900 shadow-xl rounded-xl p-4 transition-transform hover:scale-[1.02] duration-300 flex flex-col justify-between border border-gray-200 min-h-[240px]";
+    tarjeta.className = "bg-white text-gray-900 shadow-md rounded-md p-3 sm:p-4 flex flex-col justify-between border border-gray-200 min-h-[140px] text-sm";
+
 
     const renderInput = (valor, color, tipo, fiat) => {
   const claseColor = color === "green" ? "text-green-900" : "text-red-900";
@@ -108,31 +108,31 @@ async function guardarSnapshot(datos) {
 };
 
     tarjeta.innerHTML = `
-      <div>
-        <h3 class="text-lg font-semibold tracking-wide mb-3">${emoji} ${p.nombre} (${p.fiat})</h3>
-        <div class="grid grid-cols-2 gap-3">
-          <div class="bg-green-100 border border-green-300 shadow-inner rounded-lg p-3 text-center">
-            <h4 class="text-sm font-medium text-green-700">Compra</h4>
-            ${renderInput(compra, 'green', 'compra', p.fiat)}
-          </div>
-          <div class="bg-red-100 border border-red-300 shadow-inner rounded-lg p-3 text-center">
-            <h4 class="text-sm font-medium text-red-700">Venta</h4>
-            ${renderInput(venta, 'red', 'venta', p.fiat)}
-          </div>
-        </div>
+  <div>
+    <h3 class="text-sm font-semibold tracking-wide mb-2">${emoji} ${p.nombre} (${p.fiat})</h3>
+    <div class="flex flex-row gap-2">
+      <div class="flex-1 bg-green-100 border border-green-300 rounded-md p-2 text-center text-xs">
+        <h4 class="text-[11px] font-medium text-green-700">Compra</h4>
+        ${renderInput(compra, 'green', 'compra', p.fiat)}
       </div>
-      <div class="mt-4 text-sm text-gray-700 flex justify-between items-center">
-        <span>Ajuste (%)</span>
-        ${modoEdicion ? `
-  <input type="number"
-    step="any"
-    data-fi="${p.fiat}"
-    data-tipo="ajuste"
-    value="${ajuste}"
-    class="w-20 px-2 py-1 border border-gray-300 rounded-md text-right bg-white focus:outline-none focus:ring-2 focus:ring-blue-400" />
-` : `<div class="w-20 text-right font-semibold text-gray-800">${ajuste} %</div>`}
+      <div class="flex-1 bg-red-100 border border-red-300 rounded-md p-2 text-center text-xs">
+        <h4 class="text-[11px] font-medium text-red-700">Venta</h4>
+        ${renderInput(venta, 'red', 'venta', p.fiat)}
       </div>
-    `;
+    </div>
+  </div>
+  <div class="mt-2 text-[11px] text-gray-700 flex justify-between items-center">
+    <span>Ajuste (%)</span>
+    ${modoEdicion ? `
+      <input type="number"
+        step="any"
+        data-fi="${p.fiat}"
+        data-tipo="ajuste"
+        value="${ajuste}"
+        class="w-16 px-1 py-0.5 border border-gray-300 rounded-md text-right bg-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-400" />
+    ` : `<div class="w-12 text-right font-semibold text-gray-800">${ajuste} %</div>`}
+  </div>
+`;
 
     cont.appendChild(tarjeta);
   });
@@ -311,7 +311,7 @@ document.getElementById("btn-guardar-ajustes").addEventListener("click", async (
  function escribirCruces() {
   const cont = document.getElementById("cruces-container");
   cont.innerHTML = "";
-  cont.className = "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 mt-10";
+  cont.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-5 mt-8";
 
   Object.keys(datosPaises).forEach(origen => {
     Object.keys(datosPaises).forEach(destino => {
@@ -347,14 +347,15 @@ document.getElementById("btn-guardar-ajustes").addEventListener("click", async (
       }
 
       const card = document.createElement("div");
-      card.className = `bg-white rounded-xl shadow-md p-4 border border-gray-200 transform transition-all duration-300 hover:scale-[1.015] ${color}`;
+      card.className = `bg-white rounded-md shadow-sm p-3 border border-gray-200 text-xs sm:text-sm transform transition-transform duration-200 hover:scale-[1.01] ${color}`;
 
       card.innerHTML = `
-        <h4 class="text-md font-bold mb-2">${flagOrigen} ${origen} → ${flagDestino} ${destino}</h4>
-        <p class="text-gray-600 text-sm">Tasa base: ${formatearTasa(tasaBase)}</p>
-        <p class="text-gray-600 text-sm">Ajuste aplicado: ${ajuste}%</p>
-        <p class="text-lg font-semibold mt-2">Tasa final: ${formatearTasa(tasaFinal)} ${emoji}</p>
-      `;
+  <h4 class="text-xs font-bold mb-1">${flagOrigen} ${origen} → ${flagDestino} ${destino}</h4>
+  <p class="text-gray-600 text-[11px]">Tasa base: ${formatearTasa(tasaBase)}</p>
+  <p class="text-gray-600 text-[11px]">Ajuste aplicado: ${ajuste}%</p>
+  <p class="text-[13px] font-semibold mt-1">Tasa final: ${formatearTasa(tasaFinal)} ${emoji}</p>
+`;
+
 
       cont.appendChild(card);
     });
