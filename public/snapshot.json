@@ -2,37 +2,37 @@
   "ARS": {
     "compra": 1342.858,
     "venta": 1337.9555,
-    "ajuste": 10
+    "ajuste": 8
   },
   "COP": {
     "compra": 4016.8075,
     "venta": 3988.543,
-    "ajuste": 10
+    "ajuste": 8
   },
   "MXN": {
     "compra": 18.8245,
     "venta": 18.697,
-    "ajuste": 18
+    "ajuste": 15
   },
   "PEN": {
     "compra": 3.56525,
     "venta": 3.55835,
-    "ajuste": 9
+    "ajuste": 7
   },
   "CLP": {
     "compra": 977.7305,
     "venta": 975.2505,
-    "ajuste": 9
+    "ajuste": 7
   },
   "BRL": {
     "compra": 5.74,
     "venta": 5.49,
-    "ajuste": 9
+    "ajuste": 8
   },
   "VES": {
     "compra": 185.93,
     "venta": 185.465175,
-    "ajuste": 2
+    "ajuste": 4
   },
   "timestamp": "2025-08-07T15:07:27.133Z",
   "cruces": {
