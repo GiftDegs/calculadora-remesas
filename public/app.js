@@ -14,7 +14,6 @@ let tasa = null;
 let tasaCompraUSD = null;
 let estadoActual = 'origen';
 
-
 // Elementos DOM
 const btnVolverGlobal = document.getElementById('btnVolverGlobal');
 const mainHeader = document.getElementById('mainHeader');
@@ -40,7 +39,6 @@ const btnRecalcular = document.getElementById('btnRecalcular');
 const loader = document.getElementById('calculando');
 const resText = document.getElementById('resText');
 const soundSuccess = document.getElementById('soundSuccess');
-const btnUpdate = document.getElementById('btnUpdate');
 const btnWhats = document.getElementById('btnWhats');
 const btnCompartir = document.getElementById('btnCompartir');
 const resTextContainer = document.getElementById('resTextContainer');
@@ -63,11 +61,10 @@ const paisesDisponibles = [
   { codigo: 'BRL', nombre: 'Brasil', emoji: '🇧🇷', moneda: 'reales' },
   { codigo: 'VES', nombre: 'Venezuela', emoji: '🇻🇪', moneda: 'bolívares' }
 ];
-// Utilidades
 
+// --- Utilidades ---
 function calcularCruce(origen, destino, modo, monto, tasa) {
   const esColAVen = origen === 'COP' && destino === 'VES';
-
   if (modo === 'enviar') {
     return esColAVen ? monto / tasa : monto * tasa;
   } else {
@@ -76,69 +73,69 @@ function calcularCruce(origen, destino, modo, monto, tasa) {
 }
 
 function formatearFecha(timestamp) {
-  return new Date(timestamp).toLocaleDateString(userLocale, {
-    day: '2-digit', month: 'long', year: 'numeric'
-  });
+  if (!timestamp) return 'hoy';
+  const d = new Date(timestamp);
+  if (isNaN(d)) return 'hoy';
+  return d.toLocaleDateString(userLocale, { day:'2-digit', month:'long', year:'numeric' });
 }
 
 function redondearPorMoneda(valor, moneda) {
   let unidadRedondeo = 1;
-
   switch (moneda) {
     case 'ARS':
     case 'COP':
     case 'CLP':
-      unidadRedondeo = 100;
-      break;
+      unidadRedondeo = 100; break;
     case 'VES':
     case 'MXN':
     case 'PEN':
     case 'BRL':
-      unidadRedondeo = 1;
-      break;
+      unidadRedondeo = 1; break;
   }
-
-  if (valor < unidadRedondeo) {
-    return Math.round(valor);
-  }
-
+  if (valor < unidadRedondeo) return Math.round(valor);
   const resto = valor % unidadRedondeo;
-  return resto >= unidadRedondeo / 2
-    ? valor + (unidadRedondeo - resto)
-    : valor - resto;
+  return resto >= unidadRedondeo / 2 ? valor + (unidadRedondeo - resto) : valor - resto;
 }
-
-
 
 function formatearTasa(v) {
-  if (v >= 1) return v.toFixed(1);
-  if (v >= 0.01) return v.toFixed(3);
-  if (v >= 0.00099) return v.toFixed(5);
-  return v.toFixed(6);
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "-";
+  if (n >= 1) return n.toFixed(1);
+  if (n >= 0.01) return n.toFixed(3);
+  if (n >= 0.00099) return n.toFixed(5);
+  return n.toFixed(6);
 }
 
-// Obtener tasa para cruce y tasa de compra USD desde snapshot
+// --- Carga de tasas desde backend ---
 async function obtenerTasa(origen, destino) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+
   try {
-    const res = await fetch('../snapshot.json');
-    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const res = await fetch('/api/snapshot', { cache: 'no-store', signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+
     const clave = `${origen}-${destino}`;
-    const tasaCrudo = data.cruces?.[clave] ?? null;
+    const tasaCrudo = data?.cruces?.[clave] ?? null;
 
-    // Extraemos la tasa de compra del origen en USD
-    tasaCompraUSD = parseFloat(data?.[origen]?.compra ?? null);
+    const compra = Number(data?.[origen]?.compra);
+    if (Number.isFinite(compra)) {
+      tasaCompraUSD = compra; // global
+    } else {
+      console.warn(`No hay 'compra' USD para ${origen} en snapshot`);
+    }
 
-    return {
-      tasa: tasaCrudo,
-      fecha: data.timestamp ?? null
-    };
-  } catch (error) {
-    console.error('Error al obtener tasa:', error);
+    return { tasa: tasaCrudo, fecha: data?.timestamp ?? null };
+  } catch (err) {
+    console.error('Error al obtener tasa:', err);
     return { tasa: null, fecha: null };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
+// --- UI Flow ---
 function ocultarTodo() {
   step1Origen.classList.add('hidden');
   step2Destino.classList.add('hidden');
@@ -149,41 +146,29 @@ function ocultarTodo() {
 }
 
 function mostrarPaso1() {
-   estadoActual = 'origen';
-     ocultarTodo();
+  estadoActual = 'origen';
+  ocultarTodo();
   step1Origen.classList.remove('hidden');
   actualizarHeader('Selecciona el país de origen');
   btnVolverGlobal.classList.add('hidden');
-  step1Origen.classList.remove('hidden');
   step1Origen.classList.add('fade-slide-in');
-  step2Destino.classList.add('hidden');
-    step1.classList.add('hidden');
-  step2.classList.add('hidden');
-  tasaWrap.classList.add('hidden');
-  resultado.classList.add('hidden');
-  
 
   origenBtns.innerHTML = '';
   paisesDisponibles.forEach(pais => {
     const btn = document.createElement('button');
     btn.textContent = `${pais.emoji} ${pais.nombre}`;
     btn.className = 'ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105';
-    btn.onclick = () => {
-      origenSeleccionado = pais.codigo;
-      mostrarPaso2();
-    };
+    btn.onclick = () => { origenSeleccionado = pais.codigo; mostrarPaso2(); };
     origenBtns.appendChild(btn);
   });
 }
 
 function mostrarPaso2() {
   estadoActual = 'destino';
-    ocultarTodo();
+  ocultarTodo();
   step2Destino.classList.remove('hidden');
   actualizarHeader('Selecciona el país destino');
   btnVolverGlobal.classList.remove('hidden');
-  step1Origen.classList.add('hidden');
-  step2Destino.classList.remove('hidden');
   step2Destino.classList.add('fade-slide-in');
 
   destinoBtns.innerHTML = '';
@@ -193,11 +178,7 @@ function mostrarPaso2() {
       const btn = document.createElement('button');
       btn.textContent = `${pais.emoji} ${pais.nombre}`;
       btn.className = 'ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105';
-      btn.onclick = () => {
-        destinoSeleccionado = pais.codigo;
-        step2Destino.classList.add('hidden');
-        mostrarPaso3();
-      };
+      btn.onclick = () => { destinoSeleccionado = pais.codigo; step2Destino.classList.add('hidden'); mostrarPaso3(); };
       destinoBtns.appendChild(btn);
     });
 }
@@ -209,7 +190,6 @@ async function mostrarPaso3() {
   btnVolverGlobal.classList.remove('hidden');
   mainHeader.classList.remove('hidden');
   tasaWrap.classList.remove('hidden');
-  step1.classList.remove('hidden');
   actualizarHeader('Selecciona el tipo de operación');
 
   const paisOrigen = paisesDisponibles.find(p => p.codigo === origenSeleccionado);
@@ -239,6 +219,7 @@ async function mostrarPaso3() {
     mostrarToast('No hay tasa disponible para ese cruce');
   }
 }
+
 function cambiarPaso(tipo) {
   mode = tipo;
   const paisOrigen = paisesDisponibles.find(p => p.codigo === origenSeleccionado);
@@ -246,7 +227,7 @@ function cambiarPaso(tipo) {
 
   preguntaMonto.textContent = tipo === 'enviar'
     ? `¿Cuántos ${paisOrigen.moneda} vas a enviar?`
-    : `¿Cuántos ${paisDestino.moneda} querés que lleguen?`;
+    : `¿Cuántos ${paisDestino.moneda} quieres que lleguen?`;
 
   preguntaMonto.classList.remove('opacity-0','translate-y-4');
   preguntaMonto.classList.add('opacity-100','translate-y-0');
@@ -258,7 +239,7 @@ function cambiarPaso(tipo) {
 btnEnviar.onclick = () => cambiarPaso('enviar');
 btnLlegar.onclick = () => cambiarPaso('llegar');
 
-// Normalización del input
+// --- Normalización input ---
 inputMonto.addEventListener('input', () => {
   let val = inputMonto.value.replace(/[^0-9.]/g, '');
   const parts = val.split('.');
@@ -275,41 +256,34 @@ inputMonto.addEventListener('focus', () => {
 inputMonto.addEventListener('blur', () => {
   setTimeout(() => window.scrollTo({ top: scrollAntesDeTeclado, behavior: 'smooth' }), 150);
 });
-inputMonto.addEventListener('keydown', e => {
-  if (e.key === 'Enter') btnCalcular.click();
-});
+inputMonto.addEventListener('keydown', e => { if (e.key === 'Enter') btnCalcular.click(); });
 
+// --- Calcular ---
 btnCalcular.onclick = () => {
   const raw = inputMonto.value.trim();
   const monto = parseFloat(raw);
   const tasaF = parseFloat(tasa);
 
- estadoActual = 'resultado';
+  estadoActual = 'resultado';
   btnVolverGlobal.classList.remove('hidden');
 
-
   if (isNaN(monto)) {
-        errorMonto.textContent = '⚠️ Ingresa un número válido';
+    errorMonto.textContent = '⚠️ Ingresa un número válido';
     errorMonto.classList.remove('hidden');
     return;
   }
-
   if (isNaN(tasaF) || tasaF <= 0) {
     errorMonto.textContent = '⚠️ La tasa aún no se ha cargado. Intenta actualizarla manualmente.';
     errorMonto.classList.remove('hidden');
     return;
   }
-
   if (!tasaCompraUSD) {
     errorMonto.textContent = '⚠️ No se pudo obtener la tasa de compra en USD.';
     errorMonto.classList.remove('hidden');
     return;
   }
 
-  const montoEnPesos = mode === 'enviar'
-  ? monto
-  : calcularCruce(origenSeleccionado, destinoSeleccionado, mode, monto, tasaF);
-
+  const montoEnPesos = mode === 'enviar' ? monto : calcularCruce(origenSeleccionado, destinoSeleccionado, mode, monto, tasaF);
   const montoUSD = montoEnPesos / tasaCompraUSD;
 
   if (montoUSD < CONFIG.MIN_USD) {
@@ -317,7 +291,6 @@ btnCalcular.onclick = () => {
     errorMonto.classList.remove('hidden');
     return;
   }
-
   if (montoUSD > CONFIG.MAX_USD) {
     errorMonto.textContent = `⚠️ El monto máximo permitido es equivalente a ${CONFIG.MAX_USD} USD`;
     errorMonto.classList.remove('hidden');
@@ -326,18 +299,13 @@ btnCalcular.onclick = () => {
 
   if (montoUSD > 400 && !aceptoAdvertenciaPartes) {
     const partes = Math.ceil(montoUSD / 200);
-    errorMonto.innerHTML = `⚠️ Por montos superiores a 400 USD, la transferencia debe realizarse en ${partes} partes.<br>Debes confirmar que leíste y aceptás esta condición.`;
-
+    errorMonto.innerHTML = `⚠️ Por montos superiores a 400 USD, la transferencia debe realizarse en ${partes} partes.<br>Debes confirmar que leíste y aceptas esta condición.`;
     if (!document.getElementById('btnAceptarRegla')) {
       const btn = document.createElement('button');
       btn.id = 'btnAceptarRegla';
       btn.textContent = 'Leí y acepto';
       btn.className = 'mt-2 px-4 py-2 bg-blue-600 text-white rounded';
-      btn.onclick = () => {
-        aceptoAdvertenciaPartes = true;
-        errorMonto.classList.add('hidden');
-        btn.remove();
-      };
+      btn.onclick = () => { aceptoAdvertenciaPartes = true; errorMonto.classList.add('hidden'); btn.remove(); };
       errorMonto.appendChild(btn);
     }
     errorMonto.classList.remove('hidden');
@@ -346,40 +314,28 @@ btnCalcular.onclick = () => {
 
   errorMonto.classList.add('hidden');
 
-const calc = Math.round(calcularCruce(origenSeleccionado, destinoSeleccionado, mode, monto, tasaF));
-
+  const calc = Math.round(calcularCruce(origenSeleccionado, destinoSeleccionado, mode, monto, tasaF));
   const paisOrigen = paisesDisponibles.find(p => p.codigo === origenSeleccionado);
-const paisDestino = paisesDisponibles.find(p => p.codigo === destinoSeleccionado);
+  const paisDestino = paisesDisponibles.find(p => p.codigo === destinoSeleccionado);
 
-const calcRedondeado = mode === 'llegar'
-  ? redondearPorMoneda(calc, paisOrigen.codigo)
-  : calc;
-
+  const calcRedondeado = mode === 'llegar' ? redondearPorMoneda(calc, paisOrigen.codigo) : calc;
 
   const fecha = tasaFechaEl.textContent;
   const montoFmt = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 2 }).format(monto);
   const calcFmt = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 0 }).format(calcRedondeado);
   const tasaFmt = formatearTasa(tasa);
 
-
-
   const mensaje = mode === 'enviar'
     ? `<div class="text-sm italic text-gray-500 dark:text-gray-400">Enviando desde ${paisOrigen.nombre}</div>
        <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">$${montoFmt} ${paisOrigen.codigo}</div>
        <div class="text-base text-gray-600 dark:text-gray-300 mt-1">recibirás</div>
        <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">${paisDestino.codigo} ${calcFmt}</div>
-       <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">
-         Calculado con la tasa del día ${fecha} — 
-         <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span>
-       </div>`
+       <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">Calculado con la tasa del día ${fecha} — <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span></div>`
     : `<div class="text-sm italic text-gray-500 dark:text-gray-400">Para recibir en ${paisDestino.nombre}</div>
        <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">${paisDestino.codigo} ${montoFmt}</div>
        <div class="text-base text-gray-600 dark:text-gray-300 mt-1">debes enviar</div>
        <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">$${calcFmt} ${paisOrigen.codigo}</div>
-       <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">
-         Calculado con la tasa del día ${fecha} — 
-         <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span>
-       </div>`;
+       <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">Calculado con la tasa del día ${fecha} — <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span></div>`;
 
   resText.innerHTML = mensaje;
   if (!soundSuccess.muted) soundSuccess.play();
@@ -398,6 +354,7 @@ const calcRedondeado = mode === 'llegar'
     resText.classList.add('text-4xl');
   }, 1500);
 };
+
 btnRecalcular.onclick = () => {
   inputMonto.value = '';
   resText.classList.remove('text-4xl');
@@ -408,6 +365,7 @@ btnRecalcular.onclick = () => {
   setTimeout(() => tasaWrap.classList.remove('opacity-0', 'scale-95'), 50);
 };
 
+// --- WhatsApp ---
 btnWhats.onclick = () => {
   const fecha = tasaFechaEl.textContent;
   const tasaFmt = formatearTasa(tasa);
@@ -423,23 +381,17 @@ btnWhats.onclick = () => {
   }
 
   let montoCalculado = Math.round(calcularCruce(origenSeleccionado, destinoSeleccionado, mode, montoIngresado, tasa));
-
   if (mode === 'llegar') {
     montoCalculado = redondearPorMoneda(montoCalculado, paisOrigen.codigo);
   }
 
-  const ingresadoFmt = montoIngresado.toLocaleString('es-AR');
-  const calculadoFmt = montoCalculado.toLocaleString('es-VE');
+  const ingresadoFmt = montoIngresado.toLocaleString('es-ES');
+  const calculadoFmt = montoCalculado.toLocaleString('es-ES');
 
-  const montoOrigenFmt = mode === 'enviar' 
-    ? `$${ingresadoFmt} ${paisOrigen.codigo}`
-    : `$${calculadoFmt} ${paisOrigen.codigo}`;
+  const montoOrigenFmt = mode === 'enviar' ? `$${ingresadoFmt} ${paisOrigen.codigo}` : `$${calculadoFmt} ${paisOrigen.codigo}`;
+  const montoDestinoFmt = mode === 'enviar' ? `${calculadoFmt} ${paisDestino.codigo}` : `${ingresadoFmt} ${paisDestino.codigo}`;
 
-  const montoDestinoFmt = mode === 'enviar'
-    ? `${calculadoFmt} ${paisDestino.codigo}`
-    : `${ingresadoFmt} ${paisDestino.codigo}`;
-
-  const mensajeCliente = 
+  const mensajeCliente =
     `👋 ¡Hola ByteTransfer!\n\n` +
     `Quiero enviar *${montoOrigenFmt}* desde *${paisOrigen.nombre}* ${paisOrigen.emoji} 📤\n` +
     `para que lleguen *${montoDestinoFmt}* a *${paisDestino.nombre}* ${paisDestino.emoji} 📬\n\n` +
@@ -464,39 +416,7 @@ btnWhats.onclick = () => {
   }, 600);
 };
 
-btnVolverGlobal.onclick = () => {
-    errorMonto.classList.add('hidden');
-  errorMonto.innerHTML = ''; 
-
-    // Forzamos ocultar step2 si está activo (especialmente tras error)
-  step2.classList.add('hidden');
-  preguntaMonto.classList.add('opacity-0', 'translate-y-4');
-  inputMonto.blur();
-
-
-  if (estadoActual === 'destino') {
-    mostrarPaso1();
-    estadoActual = 'origen';
-    btnVolverGlobal.classList.add('hidden');
-
-  } else if (estadoActual === 'modo') {
-    step1.classList.add('hidden');
-    tasaWrap.classList.add('hidden');
-    mostrarPaso2();
-    estadoActual = 'destino';
-
-  } else if (estadoActual === 'resultado') {
-    resultado.classList.add('hidden');
-    resultado.classList.remove('fade-scale-in');
-    step1.classList.remove('hidden');
-    tasaWrap.classList.remove('hidden');
-    actualizarHeader('Selecciona el tipo de operación');
-    setTimeout(() => tasaWrap.classList.remove('opacity-0', 'scale-95'), 50);
-    estadoActual = 'modo';
-  }
-};
-
-
+// --- Compartir ---
 btnCompartir.onclick = (e) => {
   e.stopPropagation();
   btnCompartir.nextElementSibling.classList.remove('hidden');
@@ -504,37 +424,37 @@ btnCompartir.onclick = (e) => {
 
 opcionTexto.onclick = async () => {
   btnCompartir.nextElementSibling.classList.add('hidden');
+
   const fecha = tasaFechaEl.textContent;
   const tasaF = parseFloat(tasa);
   const raw = parseFloat(inputMonto.value.trim());
   const montoIngresado = isNaN(raw) ? 0 : raw;
 
-const paisOrigen = paisesDisponibles.find(p => p.codigo === origenSeleccionado);
-const paisDestino = paisesDisponibles.find(p => p.codigo === destinoSeleccionado);
+  const paisOrigen = paisesDisponibles.find(p => p.codigo === origenSeleccionado);
+  const paisDestino = paisesDisponibles.find(p => p.codigo === destinoSeleccionado);
 
-let montoCalculado = mode === 'enviar'
-  ? Math.round(montoIngresado * tasaF)
-  : Math.round(montoIngresado / tasaF);
+  let montoCalculado = Math.round(calcularCruce(origenSeleccionado, destinoSeleccionado, mode, montoIngresado, tasaF));
+  if (mode === 'llegar') {
+    // redondeo por MONEDA DE ORIGEN para mantener consistencia
+    montoCalculado = redondearPorMoneda(montoCalculado, paisOrigen.codigo);
+  }
 
-if (mode === 'llegar') {
-  montoCalculado = redondearPorMoneda(montoCalculado, paisDestino.codigo);
-}
+  const ingresadoFmt = montoIngresado.toLocaleString('es-ES');
+  const calculadoFmt = montoCalculado.toLocaleString('es-ES');
+  const tasaFmt = formatearTasa(tasaF);
 
-
-
-const ingresadoFmt = montoIngresado.toLocaleString('es-AR');
-const calculadoFmt = montoCalculado.toLocaleString('es-VE');
-const tasaFmt = formatearTasa(tasaF);
-
-  const mensajePro = `📦 Transferencia calculada con ByteTransfer\n\n` +
+  const mensajePro =
+    `📦 Transferencia calculada con ByteTransfer\n\n` +
     (mode === 'enviar'
-      ? `💰 Monto a enviar: $${ingresadoFmt} ${paisOrigen.codigo} desde ${paisOrigen.nombre}\n📥 Monto a recibir: ${paisDestino.codigo} ${calculadoFmt} en ${paisDestino.nombre}`
-      : `📥 Monto a recibir: ${paisDestino.codigo} ${ingresadoFmt} en ${paisDestino.nombre}\n💰 Monto a enviar: $${calculadoFmt} ${paisOrigen.codigo} desde ${paisOrigen.nombre}`) +
+      ? `💰 Monto a enviar: $${ingresadoFmt} ${paisOrigen.codigo} desde ${paisOrigen.nombre}\n` +
+        `📥 Monto a recibir: ${paisDestino.codigo} ${calculadoFmt} en ${paisDestino.nombre}`
+      : `📥 Monto a recibir: ${paisDestino.codigo} ${ingresadoFmt} en ${paisDestino.nombre}\n` +
+        `💰 Monto a enviar: $${calculadoFmt} ${paisOrigen.codigo} desde ${paisOrigen.nombre}`) +
     `\n💱 Tasa del día: ${tasaFmt}\n📅 Fecha: ${fecha}`;
 
   try {
     await navigator.clipboard.writeText(mensajePro);
-    mostrarToast(mensajePro);
+    mostrarToast('Texto copiado ✅');
   } catch (err) {
     mostrarToast('⚠️ Error al copiar');
     console.error(err);
@@ -549,11 +469,7 @@ opcionImagen.onclick = async () => {
 
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({
-        title: 'ByteTransfer',
-        text: 'Resultado de cambio enviado desde la app ByteTransfer',
-        files: [file],
-      });
+      await navigator.share({ title: 'ByteTransfer', text: 'Resultado de cambio enviado desde la app ByteTransfer', files: [file] });
     } catch (err) {
       console.warn('Share cancelado o falló:', err);
     }
@@ -572,18 +488,19 @@ document.addEventListener('click', e => {
   }
 });
 
-// Ripple buttons
-document.querySelectorAll('.ripple-button').forEach(btn => {
-  btn.addEventListener('click', e => {
-    const ripple = document.createElement('span');
-    const d = Math.max(btn.clientWidth, btn.clientHeight);
-    const r = d / 2;
-    ripple.style.width = ripple.style.height = `${d}px`;
-    ripple.style.left = `${e.offsetX - r}px`;
-    ripple.style.top = `${e.offsetY - r}px`;
-    btn.appendChild(ripple);
-    setTimeout(() => ripple.remove(), 600);
-  });
+// Ripple por delegación (funciona con botones creados dinámicamente)
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.ripple-button');
+  if (!btn) return;
+  const ripple = document.createElement('span');
+  const d = Math.max(btn.clientWidth, btn.clientHeight);
+  const r = d / 2;
+  ripple.style.width = ripple.style.height = `${d}px`;
+  const rect = btn.getBoundingClientRect();
+  ripple.style.left = `${e.clientX - rect.left - r}px`;
+  ripple.style.top = `${e.clientY - rect.top - r}px`;
+  btn.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 600);
 });
 
 // Toast
