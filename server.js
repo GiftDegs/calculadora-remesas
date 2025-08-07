@@ -35,29 +35,48 @@ app.post("/api/guardar-snapshot", (req, res) => {
   const snapshotActualPath = path.join(__dirname, "public", "snapshot.json");
   const fecha = new Date().toISOString().slice(0, 10);
   const snapshotHistPath = path.join(__dirname, "public", "snapshots", `${fecha}.json`);
+  const dirSnapshots = path.join(__dirname, "public", "snapshots");
 
-  const crucesFormateados = {};
-  for (const key in req.body.cruces) {
-    crucesFormateados[key] = formatearTasa(req.body.cruces[key]);
+  // 1. Leer snapshot anterior si existe
+  let snapshotAnterior = {};
+  if (fs.existsSync(snapshotActualPath)) {
+    const raw = fs.readFileSync(snapshotActualPath, "utf8");
+    snapshotAnterior = JSON.parse(raw);
   }
 
-  const datos = {
+  // 2. Formatear solo las tasas nuevas recibidas
+  const crucesNuevosFormateados = {};
+  for (const key in req.body.cruces) {
+    crucesNuevosFormateados[key] = formatearTasa(req.body.cruces[key]);
+  }
+
+  // 3. Combinar con los cruces anteriores que no fueron modificados
+  const crucesCompletos = {
+    ...snapshotAnterior.cruces,
+    ...crucesNuevosFormateados
+  };
+
+  // 4. Armar nuevo snapshot completo
+  const datosFinales = {
+    ...snapshotAnterior,
     ...req.body,
-    cruces: crucesFormateados,
+    cruces: crucesCompletos,
     guardado_en: new Date().toISOString()
   };
 
-  const dirSnapshots = path.join(__dirname, "public", "snapshots");
-  if (!fs.existsSync(dirSnapshots)) {
-    fs.mkdirSync(dirSnapshots);
-  }
-
   try {
-    fs.writeFileSync(snapshotActualPath, JSON.stringify(datos, null, 2));
-    console.log("📁 Snapshot actualizado");
+    // Crear carpeta de snapshots históricos si no existe
+    if (!fs.existsSync(dirSnapshots)) {
+      fs.mkdirSync(dirSnapshots);
+    }
 
+    // Guardar snapshot actual
+    fs.writeFileSync(snapshotActualPath, JSON.stringify(datosFinales, null, 2));
+    console.log("💾 Snapshot actualizado");
+
+    // Guardar snapshot histórico si no existe
     if (!fs.existsSync(snapshotHistPath)) {
-      fs.writeFileSync(snapshotHistPath, JSON.stringify(datos, null, 2));
+      fs.writeFileSync(snapshotHistPath, JSON.stringify(datosFinales, null, 2));
       console.log("📦 Snapshot histórico guardado:", fecha);
     }
 
@@ -67,6 +86,7 @@ app.post("/api/guardar-snapshot", (req, res) => {
     res.status(500).json({ error: "Error al guardar snapshot" });
   }
 });
+
 
 // Obtener precios desde Binance
 app.post("/api/binance", async (req, res) => {
