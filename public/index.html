@@ -11,6 +11,7 @@
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="app.js" defer></script>
+
   <style>
     .tasa-shine { position: relative; overflow: hidden; }
 
@@ -64,20 +65,38 @@
       <button id="toggleDark" class="transition-colors duration-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 px-2 sm:px-3 py-1 rounded-md shadow-md text-xs sm:text-sm">🌗 Modo</button>
     </div>
 
-    <header class="transition-colors duration-500 flex flex-col items-center">
+    <header id="mainHeader" class="transition-colors duration-500 flex flex-col items-center">
       <img src="logo.png" alt="Logo ByteTransfer" class="h-24 mb-4" />
       <h1 class="transition-colors duration-500 font-bold text-[#0066FF] dark:text-[#66AAFF] text-center whitespace-nowrap overflow-hidden text-ellipsis max-w-full text-2xl sm:text-3xl md:text-4xl">
         Calculadora de Cambios
       </h1>
-      <p class="transition-colors duration-500 text-lg text-[#666666] dark:text-gray-300 text-center -mt-1">
-        De Argentina a Venezuela
-      </p>
+      <p id="subtituloHeader" class="transition-colors duration-500 text-lg text-[#666666] dark:text-gray-300 text-center -mt-1">
+  <!-- Se llenará dinámicamente -->
+</p>
+
     </header>
+
+    <section id="step1Origen" class="flex flex-col items-center gap-4 text-center">
+    <p class="text-lg text-gray-700 dark:text-gray-300">¿Desde dónde quieres enviar?</p>
+
+  <div id="origenBtns" class="flex flex-col gap-3 mt-4">
+    <!-- Botones generados por JS -->
+  </div>
+</section>
+
+<section id="step2Destino" class="hidden flex flex-col items-center gap-4 text-center">
+  <p class="text-lg text-gray-700 dark:text-gray-300">¿A qué país quieres enviar?</p>
+
+  <div id="destinoBtns" class="flex flex-col gap-3 mt-4">
+    <!-- Botones generados por JS -->
+  </div>
+</section>
+
 
     <div id="tasaWrap" class="transition-colors duration-500 flex flex-col items-center transition-all duration-300">
       <p id="tasaTitulo" class="text-base font-semibold text-gray-700 dark:text-gray-300">Tasa del día</p>
       <p id="tasaFecha" class="text-sm italic text-[#666666] dark:text-gray-400">—</p>
-      <div id="tasaCard" class="tasa-shine mt-2 w-48 h-48 flex items-center justify-center rounded-2xl bg-[#E1F0FF]/80 dark:bg-white/10 backdrop-blur-md ring-1 ring-black/5 shadow-[0_8px_20px_rgba(0,0,0,0.12)] transition-all duration-300 relative">
+      <div id="tasaCard" class="tasa-shine mt-2 min-w-[10rem] px-6 py-6 flex items-center justify-center rounded-2xl bg-[#E1F0FF]/80 dark:bg-white/10 backdrop-blur-md ring-1 ring-black/5 shadow-[0_8px_20px_rgba(0,0,0,0.12)] transition-all duration-300 relative">
         <span id="tasaValue" class="text-6xl font-extrabold text-blue-900 dark:text-blue-300 tracking-tight drop-shadow-lg select-none transition-all duration-300 pulse-epic">–</span>
         <span id="tasaConfirmacion" class="absolute bottom-2 text-green-600 text-sm font-medium hidden">Tasa actualizada ✅</span>
       </div>
@@ -87,26 +106,25 @@
       <h2 class="text-xl font-semibold">Elige una opción</h2>
       <button id="btnEnviar" class="ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105">¿Cuántos pesos quieres enviar?</button>
       <button id="btnLlegar" class="ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105">¿Cuánto bolívares quieres que lleguen?</button>
-      <button id="btnUpdate" class="text-sm text-[#0066FF] hover:underline mt-1 dark:text-blue-300">🔁 Actualizar tasa manualmente</button>
-    </section>
+     </section>
 
-    <section id="step2" class="transition-colors duration-500 hidden flex flex-col items-center gap-4">
+     <section id="step2" class="transition-colors duration-500 hidden flex flex-col items-center gap-4">
       <p id="preguntaMonto" class="text-lg font-semibold text-gray-800 dark:text-white opacity-0 translate-y-4 transition-all duration-300"></p>
       <p id="errorMonto" class="text-[#FF0000] font-semibold hidden transition-all duration-300"></p>
       <input id="inputMonto" type="text" inputmode="decimal" placeholder="Ingresa el monto"
         class="w-72 text-center text-2xl font-semibold px-6 py-4 rounded-xl border border-blue-300 shadow bg-white/60 text-gray-800 placeholder-gray-400 dark:bg-gray-100 dark:text-gray-800 dark:placeholder-gray-600 backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-blue-300 transition" />
-      <div class="flex gap-4">
-        <button id="btnVolverPaso1" class="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white px-4 py-2 rounded-xl">← Volver</button>
-        <button id="btnCalcular" class="bg-gradient-to-r from-[#0066FF] to-purple-600 text-white px-6 py-2 rounded-xl shadow hover:scale-105 transition-all">Calcular</button>
-      </div>
-    </section>
+       <div class="flex gap-4">
 
-    <section id="calculando"
+        <button id="btnCalcular" class="bg-gradient-to-r from-[#0066FF] to-purple-600 text-white px-6 py-2 rounded-xl shadow hover:scale-105 transition-all">Calcular</button>
+       </div>
+       </section>
+
+      <section id="calculando"
       class="hidden fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-black/70 backdrop-blur-md animate-pulse text-2xl font-semibold text-gray-800 dark:text-gray-100">
       ⏳ Calculando...
-    </section>
+     </section>
 
-    <section id="resultado" class="transition-colors duration-500 hidden flex flex-col items-center gap-6">
+     <section id="resultado" class="transition-colors duration-500 hidden flex flex-col items-center gap-6">
       <div id="resTextContainer" class="transition-colors duration-500 relative bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-100 
       rounded-xl px-6 py-8 shadow-xl ring-1 ring-gray-300 dark:ring-gray-700 hover:shadow-2xl transition-all duration-500 ease-in-out flex flex-col items-center gap-4 w-full max-w-md">
 
@@ -114,6 +132,7 @@
           class="absolute top-2 right-2 w-10 h-10 transition transform hover:scale-110 z-10">
           <img src="share.png" alt="Compartir" class="w-full h-full object-contain drop-shadow-md" />
         </button>
+
         <div id="menuCompartir" class="absolute top-12 right-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 hidden">
   <button id="opcionImagen" class="block w-full text-left px-4 py-2 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">📷 Compartir imagen</button>
   <button id="opcionTexto" class="block w-full text-left px-4 py-2 text-sm text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">💬 Compartir texto</button>
@@ -125,15 +144,20 @@
       </div>
       <div class="flex flex-col gap-3">
         <button id="btnRecalcular" class="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white px-5 py-2 rounded-lg shadow">🔁 Calcular otro</button>
-        <button id="btnWhats" class="bg-[#25D366] text-white px-6 py-3 rounded-lg shadow hover:bg-green-700">📤 Proceder por WhatsApp</button>
+        <button id="btnWhats" class="bg-[#25D366] text-white px-6 py-3 rounded-lg shadow hover:bg-green-700">Ir a WhatsApp</button>
       </div>
+      
     </section>
-
+<button id="btnVolverGlobal" class="sticky bottom-6 self-center bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white px-5 py-2 rounded-xl shadow hidden z-40">
+  ← Volver
+</button>
     <audio id="soundSuccess"
            src="https://cdn.pixabay.com/download/audio/2022/10/03/audio_a69f47a883.mp3"
            preload="auto"></audio>
   </div>
   <div id="toastMensaje" class="fixed top-[170px] right-[30px] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl px-5 py-4 text-sm sm:text-base font-medium hidden transition-all duration-500 z-50 whitespace-pre-line text-left max-w-xs w-[250px] leading-relaxed pointer-events-none opacity-0 scale-95">
 </div>
+
+
 </body>
 </html>

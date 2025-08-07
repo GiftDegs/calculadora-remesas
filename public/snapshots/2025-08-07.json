@@ -1,0 +1,83 @@
+{
+  "ARS": {
+    "compra": 1346.61,
+    "venta": 1340.4535,
+    "ajuste": 10
+  },
+  "COP": {
+    "compra": 4021.3325,
+    "venta": 4002.3845,
+    "ajuste": 10
+  },
+  "MXN": {
+    "compra": 18.7355,
+    "venta": 18.6735,
+    "ajuste": 18
+  },
+  "PEN": {
+    "compra": 3.57855,
+    "venta": 3.5624,
+    "ajuste": 9
+  },
+  "CLP": {
+    "compra": 977.763,
+    "venta": 976.3695,
+    "ajuste": 9
+  },
+  "BRL": {
+    "compra": 5.74,
+    "venta": 5.49,
+    "ajuste": 9
+  },
+  "VES": {
+    "compra": 186.3001,
+    "venta": 185.83435,
+    "ajuste": 2
+  },
+  "timestamp": "2025-08-07T00:51:33.269Z",
+  "cruces": {
+    "ARS-COP": 2.7,
+    "ARS-MXN": 0.012,
+    "ARS-PEN": 0.00238,
+    "ARS-CLP": 0.653,
+    "ARS-BRL": 0.00367,
+    "ARS-VES": 0.124,
+    "COP-ARS": 0.3,
+    "COP-MXN": 0.00418,
+    "COP-PEN": 0.000797,
+    "COP-CLP": 0.219,
+    "COP-BRL": 0.00123,
+    "COP-VES": 23.8,
+    "MXN-ARS": 58.7,
+    "MXN-COP": 175.2,
+    "MXN-PEN": 0.156,
+    "MXN-CLP": 42.7,
+    "MXN-BRL": 0.24,
+    "MXN-VES": 8.1,
+    "PEN-ARS": 340.9,
+    "PEN-COP": 1017.8,
+    "PEN-MXN": 4.7,
+    "PEN-CLP": 248.3,
+    "PEN-BRL": 1.4,
+    "PEN-VES": 47.3,
+    "CLP-ARS": 1.2,
+    "CLP-COP": 3.7,
+    "CLP-MXN": 0.017,
+    "CLP-PEN": 0.00332,
+    "CLP-BRL": 0.00511,
+    "CLP-VES": 0.173,
+    "BRL-ARS": 212.5,
+    "BRL-COP": 634.5,
+    "BRL-MXN": 3,
+    "BRL-PEN": 0.565,
+    "BRL-CLP": 154.8,
+    "BRL-VES": 29.5,
+    "VES-ARS": 7.1,
+    "VES-COP": 21.1,
+    "VES-MXN": 0.098,
+    "VES-PEN": 0.019,
+    "VES-CLP": 5.1,
+    "VES-BRL": 0.029
+  },
+  "guardado_en": "2025-08-07T00:51:33.270Z"
+}

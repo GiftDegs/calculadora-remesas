@@ -1,64 +1,253 @@
-// Detectar la configuración regional del usuario
+// Detectar configuración regional
 const userLocale = navigator.language || 'es-ES';
 
-// Variables
-const tasaCard = document.getElementById('tasaCard');
-const tasaTitulo = document.getElementById('tasaTitulo');
-const tasaFechaEl = document.getElementById('tasaFecha');
+// Config USD y número de WhatsApp
+const CONFIG = { MIN_USD: 5, MAX_USD: 1000 };
+const NUMERO_WHATSAPP = '5491157261053';
+
+// Estados globales
+let aceptoAdvertenciaPartes = false;
+let origenSeleccionado = null;
+let destinoSeleccionado = null;
+let mode = null;
+let tasa = null;
+let tasaCompraUSD = null;
+let estadoActual = 'origen';
+
+
+// Elementos DOM
+const btnVolverGlobal = document.getElementById('btnVolverGlobal');
+const mainHeader = document.getElementById('mainHeader');
+const subtituloHeader = document.getElementById('subtituloHeader');
 const tasaValue = document.getElementById('tasaValue');
+const tasaFechaEl = document.getElementById('tasaFecha');
 const tasaConfirm = document.getElementById('tasaConfirmacion');
+const step1Origen = document.getElementById('step1Origen');
+const origenBtns = document.getElementById('origenBtns');
+const step2Destino = document.getElementById('step2Destino');
+const destinoBtns = document.getElementById('destinoBtns');
+const tasaWrap = document.getElementById('tasaWrap');
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const resultado = document.getElementById('resultado');
 const btnEnviar = document.getElementById('btnEnviar');
 const btnLlegar = document.getElementById('btnLlegar');
+const preguntaMonto = document.getElementById('preguntaMonto');
+const inputMonto = document.getElementById('inputMonto');
+const errorMonto = document.getElementById('errorMonto');
 const btnCalcular = document.getElementById('btnCalcular');
 const btnRecalcular = document.getElementById('btnRecalcular');
-const btnWhats = document.getElementById('btnWhats');
-const btnVolverPaso1 = document.getElementById('btnVolverPaso1');
-const inputMonto = document.getElementById('inputMonto');
-const preguntaMonto = document.getElementById('preguntaMonto');
-const errorMonto = document.getElementById('errorMonto');
-const soundSuccess = document.getElementById('soundSuccess');
-const toggleDark = document.getElementById('toggleDark');
 const loader = document.getElementById('calculando');
+const resText = document.getElementById('resText');
+const soundSuccess = document.getElementById('soundSuccess');
 const btnUpdate = document.getElementById('btnUpdate');
+const btnWhats = document.getElementById('btnWhats');
 const btnCompartir = document.getElementById('btnCompartir');
 const resTextContainer = document.getElementById('resTextContainer');
-const resText = document.getElementById('resText');
+const opcionTexto = document.getElementById('opcionTexto');
+const opcionImagen = document.getElementById('opcionImagen');
+const toastMensaje = document.getElementById('toastMensaje');
 
-let mode = null;
-let tasa = null;
+function actualizarHeader(texto = '') {
+  subtituloHeader.textContent = texto;
+  mainHeader.classList.remove('hidden');
+}
 
-async function cargarTasa() {
+// Países y monedas
+const paisesDisponibles = [
+  { codigo: 'ARS', nombre: 'Argentina', emoji: '🇦🇷', moneda: 'pesos argentinos' },
+  { codigo: 'COP', nombre: 'Colombia', emoji: '🇨🇴', moneda: 'pesos colombianos' },
+  { codigo: 'PEN', nombre: 'Perú', emoji: '🇵🇪', moneda: 'soles' },
+  { codigo: 'CLP', nombre: 'Chile', emoji: '🇨🇱', moneda: 'pesos chilenos' },
+  { codigo: 'MXN', nombre: 'México', emoji: '🇲🇽', moneda: 'pesos mexicanos' },
+  { codigo: 'BRL', nombre: 'Brasil', emoji: '🇧🇷', moneda: 'reales' },
+  { codigo: 'VES', nombre: 'Venezuela', emoji: '🇻🇪', moneda: 'bolívares' }
+];
+// Utilidades
+
+function calcularCruce(origen, destino, modo, monto, tasa) {
+  const esColAVen = origen === 'COP' && destino === 'VES';
+
+  if (modo === 'enviar') {
+    return esColAVen ? monto / tasa : monto * tasa;
+  } else {
+    return esColAVen ? monto * tasa : monto / tasa;
+  }
+}
+
+function formatearFecha(timestamp) {
+  return new Date(timestamp).toLocaleDateString(userLocale, {
+    day: '2-digit', month: 'long', year: 'numeric'
+  });
+}
+
+function redondearPorMoneda(valor, moneda) {
+  let unidadRedondeo = 1;
+
+  switch (moneda) {
+    case 'ARS':
+    case 'COP':
+    case 'CLP':
+      unidadRedondeo = 100;
+      break;
+    case 'VES':
+    case 'MXN':
+    case 'PEN':
+    case 'BRL':
+      unidadRedondeo = 1;
+      break;
+  }
+
+  if (valor < unidadRedondeo) {
+    return Math.round(valor);
+  }
+
+  const resto = valor % unidadRedondeo;
+  return resto >= unidadRedondeo / 2
+    ? valor + (unidadRedondeo - resto)
+    : valor - resto;
+}
+
+
+
+function formatearTasa(v) {
+  if (v >= 1) return v.toFixed(1);
+  if (v >= 0.01) return v.toFixed(3);
+  if (v >= 0.00099) return v.toFixed(5);
+  return v.toFixed(6);
+}
+
+// Obtener tasa para cruce y tasa de compra USD desde snapshot
+async function obtenerTasa(origen, destino) {
   try {
-    const resp = await fetch('/api/tasa');
-    const obj = await resp.json();
-    tasa = parseFloat(obj.valor).toFixed(3);
-    tasaValue.textContent = tasa;
+    const res = await fetch('../snapshot.json');
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+    const data = await res.json();
+    const clave = `${origen}-${destino}`;
+    const tasaCrudo = data.cruces?.[clave] ?? null;
 
-    const fecha = new Date().toLocaleDateString(userLocale, {
-      day: '2-digit', month: 'long', year: 'numeric'
+    // Extraemos la tasa de compra del origen en USD
+    tasaCompraUSD = parseFloat(data?.[origen]?.compra ?? null);
+
+    return {
+      tasa: tasaCrudo,
+      fecha: data.timestamp ?? null
+    };
+  } catch (error) {
+    console.error('Error al obtener tasa:', error);
+    return { tasa: null, fecha: null };
+  }
+}
+
+function ocultarTodo() {
+  step1Origen.classList.add('hidden');
+  step2Destino.classList.add('hidden');
+  step1.classList.add('hidden');
+  step2.classList.add('hidden');
+  tasaWrap.classList.add('hidden');
+  resultado.classList.add('hidden');
+}
+
+function mostrarPaso1() {
+   estadoActual = 'origen';
+     ocultarTodo();
+  step1Origen.classList.remove('hidden');
+  actualizarHeader('Selecciona el país de origen');
+  btnVolverGlobal.classList.add('hidden');
+  step1Origen.classList.remove('hidden');
+  step1Origen.classList.add('fade-slide-in');
+  step2Destino.classList.add('hidden');
+    step1.classList.add('hidden');
+  step2.classList.add('hidden');
+  tasaWrap.classList.add('hidden');
+  resultado.classList.add('hidden');
+  
+
+  origenBtns.innerHTML = '';
+  paisesDisponibles.forEach(pais => {
+    const btn = document.createElement('button');
+    btn.textContent = `${pais.emoji} ${pais.nombre}`;
+    btn.className = 'ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105';
+    btn.onclick = () => {
+      origenSeleccionado = pais.codigo;
+      mostrarPaso2();
+    };
+    origenBtns.appendChild(btn);
+  });
+}
+
+function mostrarPaso2() {
+  estadoActual = 'destino';
+    ocultarTodo();
+  step2Destino.classList.remove('hidden');
+  actualizarHeader('Selecciona el país destino');
+  btnVolverGlobal.classList.remove('hidden');
+  step1Origen.classList.add('hidden');
+  step2Destino.classList.remove('hidden');
+  step2Destino.classList.add('fade-slide-in');
+
+  destinoBtns.innerHTML = '';
+  paisesDisponibles
+    .filter(p => p.codigo !== origenSeleccionado)
+    .forEach(pais => {
+      const btn = document.createElement('button');
+      btn.textContent = `${pais.emoji} ${pais.nombre}`;
+      btn.className = 'ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105';
+      btn.onclick = () => {
+        destinoSeleccionado = pais.codigo;
+        step2Destino.classList.add('hidden');
+        mostrarPaso3();
+      };
+      destinoBtns.appendChild(btn);
     });
-    tasaFechaEl.textContent = fecha;
+}
+
+async function mostrarPaso3() {
+  estadoActual = 'modo';
+  ocultarTodo();
+  step1.classList.remove('hidden');
+  btnVolverGlobal.classList.remove('hidden');
+  mainHeader.classList.remove('hidden');
+  tasaWrap.classList.remove('hidden');
+  step1.classList.remove('hidden');
+  actualizarHeader('Selecciona el tipo de operación');
+
+  const paisOrigen = paisesDisponibles.find(p => p.codigo === origenSeleccionado);
+  const paisDestino = paisesDisponibles.find(p => p.codigo === destinoSeleccionado);
+  const subtitulo = document.querySelector('header p');
+
+  btnEnviar.textContent = `¿Cuántos ${paisOrigen.moneda} quieres enviar?`;
+  btnLlegar.textContent = `¿Cuántos ${paisDestino.moneda} quieres que lleguen?`;
+
+  if (paisOrigen && paisDestino && subtitulo) {
+    subtitulo.textContent = `De ${paisOrigen.nombre} (${paisOrigen.moneda}) a ${paisDestino.nombre} (${paisDestino.moneda})`;
+  }
+
+  const { tasa: tasaCruda, fecha } = await obtenerTasa(origenSeleccionado, destinoSeleccionado);
+
+  if (tasaCruda) {
+    tasa = parseFloat(tasaCruda);
+    tasaValue.textContent = formatearTasa(tasa);
+    tasaFechaEl.textContent = formatearFecha(fecha);
 
     tasaConfirm.classList.remove('hidden');
     setTimeout(() => tasaConfirm.classList.add('hidden'), 3000);
     tasaValue.classList.add('animate-pulse');
     setTimeout(() => tasaValue.classList.remove('animate-pulse'), 1000);
-  } catch {
-    tasaValue.textContent = '⚠️ Error';
+  } else {
+    tasaValue.textContent = '⚠️ No disponible';
+    mostrarToast('No hay tasa disponible para ese cruce');
   }
 }
-
-window.onload = cargarTasa;
-btnUpdate.onclick = cargarTasa;
-
 function cambiarPaso(tipo) {
   mode = tipo;
+  const paisOrigen = paisesDisponibles.find(p => p.codigo === origenSeleccionado);
+  const paisDestino = paisesDisponibles.find(p => p.codigo === destinoSeleccionado);
+
   preguntaMonto.textContent = tipo === 'enviar'
-    ? '¿Cuántos pesos argentinos vas a enviar?'
-    : '¿Cuántos bolívares quieres que lleguen?';
+    ? `¿Cuántos ${paisOrigen.moneda} vas a enviar?`
+    : `¿Cuántos ${paisDestino.moneda} querés que lleguen?`;
+
   preguntaMonto.classList.remove('opacity-0','translate-y-4');
   preguntaMonto.classList.add('opacity-100','translate-y-0');
   step1.classList.add('hidden');
@@ -69,18 +258,38 @@ function cambiarPaso(tipo) {
 btnEnviar.onclick = () => cambiarPaso('enviar');
 btnLlegar.onclick = () => cambiarPaso('llegar');
 
-function redondearCentena(valor) {
-  const resto = valor % 100;
-  return resto >= 50 ? valor + (100 - resto) : valor - resto;
-}
+// Normalización del input
+inputMonto.addEventListener('input', () => {
+  let val = inputMonto.value.replace(/[^0-9.]/g, '');
+  const parts = val.split('.');
+  if (parts.length > 2) val = parts[0] + '.' + parts[1];
+  if (parts[1]?.length > 2) val = parts[0] + '.' + parts[1].slice(0,2);
+  inputMonto.value = val;
+});
+
+let scrollAntesDeTeclado = 0;
+inputMonto.addEventListener('focus', () => {
+  scrollAntesDeTeclado = window.scrollY;
+  setTimeout(() => inputMonto.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+});
+inputMonto.addEventListener('blur', () => {
+  setTimeout(() => window.scrollTo({ top: scrollAntesDeTeclado, behavior: 'smooth' }), 150);
+});
+inputMonto.addEventListener('keydown', e => {
+  if (e.key === 'Enter') btnCalcular.click();
+});
 
 btnCalcular.onclick = () => {
   const raw = inputMonto.value.trim();
   const monto = parseFloat(raw);
   const tasaF = parseFloat(tasa);
 
+ estadoActual = 'resultado';
+  btnVolverGlobal.classList.remove('hidden');
+
+
   if (isNaN(monto)) {
-    errorMonto.textContent = '⚠️ Ingresa un número válido';
+        errorMonto.textContent = '⚠️ Ingresa un número válido';
     errorMonto.classList.remove('hidden');
     return;
   }
@@ -91,60 +300,95 @@ btnCalcular.onclick = () => {
     return;
   }
 
-  const montoEnPesos = mode === 'enviar' ? monto : monto / tasaF;
-
-  if (montoEnPesos < 1000) {
-    errorMonto.textContent = '⚠️ El monto mínimo permitido es equivalente a $1.000 ARS';
+  if (!tasaCompraUSD) {
+    errorMonto.textContent = '⚠️ No se pudo obtener la tasa de compra en USD.';
     errorMonto.classList.remove('hidden');
     return;
   }
 
-  if (montoEnPesos > 1000000) {
-    errorMonto.textContent = '⚠️ El monto máximo permitido es equivalente a $1.000.000 ARS';
+  const montoEnPesos = mode === 'enviar'
+  ? monto
+  : calcularCruce(origenSeleccionado, destinoSeleccionado, mode, monto, tasaF);
+
+  const montoUSD = montoEnPesos / tasaCompraUSD;
+
+  if (montoUSD < CONFIG.MIN_USD) {
+    errorMonto.textContent = `⚠️ El monto mínimo permitido es equivalente a ${CONFIG.MIN_USD} USD`;
+    errorMonto.classList.remove('hidden');
+    return;
+  }
+
+  if (montoUSD > CONFIG.MAX_USD) {
+    errorMonto.textContent = `⚠️ El monto máximo permitido es equivalente a ${CONFIG.MAX_USD} USD`;
+    errorMonto.classList.remove('hidden');
+    return;
+  }
+
+  if (montoUSD > 400 && !aceptoAdvertenciaPartes) {
+    const partes = Math.ceil(montoUSD / 200);
+    errorMonto.innerHTML = `⚠️ Por montos superiores a 400 USD, la transferencia debe realizarse en ${partes} partes.<br>Debes confirmar que leíste y aceptás esta condición.`;
+
+    if (!document.getElementById('btnAceptarRegla')) {
+      const btn = document.createElement('button');
+      btn.id = 'btnAceptarRegla';
+      btn.textContent = 'Leí y acepto';
+      btn.className = 'mt-2 px-4 py-2 bg-blue-600 text-white rounded';
+      btn.onclick = () => {
+        aceptoAdvertenciaPartes = true;
+        errorMonto.classList.add('hidden');
+        btn.remove();
+      };
+      errorMonto.appendChild(btn);
+    }
     errorMonto.classList.remove('hidden');
     return;
   }
 
   errorMonto.classList.add('hidden');
 
-  const calc = mode === 'enviar'
-    ? Math.round(monto * tasaF)
-    : Math.round(monto / tasaF);
+const calc = Math.round(calcularCruce(origenSeleccionado, destinoSeleccionado, mode, monto, tasaF));
 
-  const calcRedondeado = mode === 'llegar'
-    ? redondearCentena(calc)
-    : calc;
+  const paisOrigen = paisesDisponibles.find(p => p.codigo === origenSeleccionado);
+const paisDestino = paisesDisponibles.find(p => p.codigo === destinoSeleccionado);
+
+const calcRedondeado = mode === 'llegar'
+  ? redondearPorMoneda(calc, paisOrigen.codigo)
+  : calc;
+
 
   const fecha = tasaFechaEl.textContent;
   const montoFmt = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 2 }).format(monto);
   const calcFmt = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 0 }).format(calcRedondeado);
-  const tasaFmt = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 3 }).format(tasaF);
+  const tasaFmt = formatearTasa(tasa);
+
+
 
   const mensaje = mode === 'enviar'
-    ? `<div class="text-sm italic text-gray-500 dark:text-gray-400">Enviando desde Argentina</div>
-       <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">$${montoFmt} ARS</div>
+    ? `<div class="text-sm italic text-gray-500 dark:text-gray-400">Enviando desde ${paisOrigen.nombre}</div>
+       <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">$${montoFmt} ${paisOrigen.codigo}</div>
        <div class="text-base text-gray-600 dark:text-gray-300 mt-1">recibirás</div>
-       <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">Bs. ${calcFmt}</div>
+       <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">${paisDestino.codigo} ${calcFmt}</div>
        <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">
          Calculado con la tasa del día ${fecha} — 
          <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span>
        </div>`
-    : `<div class="text-sm italic text-gray-500 dark:text-gray-400">Para recibir en Venezuela</div>
-       <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">Bs. ${montoFmt}</div>
+    : `<div class="text-sm italic text-gray-500 dark:text-gray-400">Para recibir en ${paisDestino.nombre}</div>
+       <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">${paisDestino.codigo} ${montoFmt}</div>
        <div class="text-base text-gray-600 dark:text-gray-300 mt-1">debes enviar</div>
-       <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">$${calcFmt} ARS</div>
+       <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">$${calcFmt} ${paisOrigen.codigo}</div>
        <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">
          Calculado con la tasa del día ${fecha} — 
          <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span>
        </div>`;
 
   resText.innerHTML = mensaje;
-
   if (!soundSuccess.muted) soundSuccess.play();
 
+  aceptoAdvertenciaPartes = false;
+
   step2.classList.add('hidden');
-  document.getElementById('tasaWrap').classList.add('transition','duration-500','ease-out','opacity-0','scale-95');
-  setTimeout(() => document.getElementById('tasaWrap').classList.add('hidden'), 500);
+  tasaWrap.classList.add('transition', 'duration-500', 'ease-out', 'opacity-0', 'scale-95');
+  setTimeout(() => tasaWrap.classList.add('hidden'), 500);
 
   loader.classList.remove('hidden');
   setTimeout(() => {
@@ -154,112 +398,151 @@ btnCalcular.onclick = () => {
     resText.classList.add('text-4xl');
   }, 1500);
 };
-
-// Botón recalcular
 btnRecalcular.onclick = () => {
   inputMonto.value = '';
   resText.classList.remove('text-4xl');
   resultado.classList.add('hidden');
   resultado.classList.remove('fade-scale-in');
   step1.classList.remove('hidden');
-  document.getElementById('tasaWrap').classList.remove('hidden');
-  setTimeout(() => document.getElementById('tasaWrap').classList.remove('opacity-0','scale-95'), 50);
+  tasaWrap.classList.remove('hidden');
+  setTimeout(() => tasaWrap.classList.remove('opacity-0', 'scale-95'), 50);
 };
 
-// Botón volver
-btnVolverPaso1.onclick = () => {
-  inputMonto.value = '';
-  step2.classList.add('hidden');
-  step1.classList.remove('hidden');
-  document.getElementById('tasaWrap').classList.remove('hidden');
-  setTimeout(() => document.getElementById('tasaWrap').classList.remove('opacity-0','scale-95'), 50);
-};
-
-// Botón WhatsApp
 btnWhats.onclick = () => {
   const fecha = tasaFechaEl.textContent;
-  const tasaFmt = parseFloat(tasa).toLocaleString('es-ES');
-  const numero = '5491157261053';
+  const tasaFmt = formatearTasa(tasa);
+  const paisOrigen = paisesDisponibles.find(p => p.codigo === origenSeleccionado);
+  const paisDestino = paisesDisponibles.find(p => p.codigo === destinoSeleccionado);
 
   const rawValue = parseFloat(inputMonto.value.trim());
   const montoIngresado = isNaN(rawValue) ? 0 : rawValue;
-  const montoCalculado = mode === 'enviar'
-    ? Math.round(montoIngresado * parseFloat(tasa))
-    : Math.round(montoIngresado / parseFloat(tasa));
+
+  if (!montoIngresado || !tasa) {
+    mostrarToast('⚠️ Primero realiza un cálculo antes de enviar por WhatsApp');
+    return;
+  }
+
+  let montoCalculado = Math.round(calcularCruce(origenSeleccionado, destinoSeleccionado, mode, montoIngresado, tasa));
+
+  if (mode === 'llegar') {
+    montoCalculado = redondearPorMoneda(montoCalculado, paisOrigen.codigo);
+  }
 
   const ingresadoFmt = montoIngresado.toLocaleString('es-AR');
   const calculadoFmt = montoCalculado.toLocaleString('es-VE');
 
-  const txt = mode === 'enviar'
-    ? `Hola, voy a enviar $${ingresadoFmt} ARS para que se reciban Bs. ${calculadoFmt} en Venezuela. Tasa del día ${fecha}: ${tasaFmt}`
-    : `Hola, quiero que lleguen Bs. ${ingresadoFmt} en Venezuela, por eso voy a enviar $${calculadoFmt} ARS. Tasa del día ${fecha}: ${tasaFmt}`;
+  const montoOrigenFmt = mode === 'enviar' 
+    ? `$${ingresadoFmt} ${paisOrigen.codigo}`
+    : `$${calculadoFmt} ${paisOrigen.codigo}`;
 
-  window.open(`https://wa.me/${numero}?text=${encodeURIComponent(txt)}`, '_blank');
+  const montoDestinoFmt = mode === 'enviar'
+    ? `${calculadoFmt} ${paisDestino.codigo}`
+    : `${ingresadoFmt} ${paisDestino.codigo}`;
+
+  const mensajeCliente = 
+    `👋 ¡Hola ByteTransfer!\n\n` +
+    `Quiero enviar *${montoOrigenFmt}* desde *${paisOrigen.nombre}* ${paisOrigen.emoji} 📤\n` +
+    `para que lleguen *${montoDestinoFmt}* a *${paisDestino.nombre}* ${paisDestino.emoji} 📬\n\n` +
+    `💱 *Tasa del día:* ${tasaFmt}\n📅 *Fecha:* ${fecha}\n\n` +
+    `¿Podrían ayudarme con esta transferencia? 🙏✨\n` +
+    `Ya les paso el comprobante 📸✅`;
+
+  const whatsappBtn = btnWhats;
+  whatsappBtn.disabled = true;
+  whatsappBtn.innerHTML = `
+    <svg class="animate-spin h-5 w-5 mr-2 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+    </svg>
+    Generando mensaje...`;
+
+  setTimeout(() => {
+    const url = `https://api.whatsapp.com/send?phone=${NUMERO_WHATSAPP}&text=${encodeURIComponent(mensajeCliente)}`;
+    window.open(url, '_blank');
+    whatsappBtn.disabled = false;
+    whatsappBtn.innerHTML = 'Ir a WhatsApp';
+  }, 600);
 };
 
+btnVolverGlobal.onclick = () => {
+    errorMonto.classList.add('hidden');
+  errorMonto.innerHTML = ''; 
 
-// Ripple
-document.querySelectorAll('.ripple-button').forEach(btn => {
-  btn.addEventListener('click', e => {
-    const ripple = document.createElement('span');
-    const d = Math.max(btn.clientWidth, btn.clientHeight);
-    const r = d / 2;
-    ripple.style.width = ripple.style.height = `${d}px`;
-    ripple.style.left = `${e.offsetX - r}px`;
-    ripple.style.top = `${e.offsetY - r}px`;
-    btn.appendChild(ripple);
-    setTimeout(() => ripple.remove(), 600);
-  });
-});
-
-// Input validation
-let scrollAntesDeTeclado = 0;
-
-inputMonto.addEventListener('input', () => {
-  let val = inputMonto.value.replace(/[^0-9.]/g, '');
-  const parts = val.split('.');
-  if (parts.length > 2) val = parts[0] + '.' + parts[1];
-  if (parts[1]?.length > 2) val = parts[0] + '.' + parts[1].slice(0,2);
-  inputMonto.value = val;
-});
-
-inputMonto.addEventListener('focus', () => {
-  scrollAntesDeTeclado = window.scrollY;
-  setTimeout(() => inputMonto.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
-});
-
-inputMonto.addEventListener('blur', () => {
-  setTimeout(() => window.scrollTo({ top: scrollAntesDeTeclado, behavior: 'smooth' }), 150);
-});
-
-inputMonto.addEventListener('keydown', e => {
-  if (e.key === 'Enter') btnCalcular.click();
-});
+    // Forzamos ocultar step2 si está activo (especialmente tras error)
+  step2.classList.add('hidden');
+  preguntaMonto.classList.add('opacity-0', 'translate-y-4');
+  inputMonto.blur();
 
 
-// Toggle dark mode
-toggleDark.onclick = () => document.documentElement.classList.toggle('dark');
+  if (estadoActual === 'destino') {
+    mostrarPaso1();
+    estadoActual = 'origen';
+    btnVolverGlobal.classList.add('hidden');
 
-// Botón compartir imagen
-const menuCompartir = document.getElementById('menuCompartir');
-const opcionImagen = document.getElementById('opcionImagen');
-const opcionTexto = document.getElementById('opcionTexto');
+  } else if (estadoActual === 'modo') {
+    step1.classList.add('hidden');
+    tasaWrap.classList.add('hidden');
+    mostrarPaso2();
+    estadoActual = 'destino';
+
+  } else if (estadoActual === 'resultado') {
+    resultado.classList.add('hidden');
+    resultado.classList.remove('fade-scale-in');
+    step1.classList.remove('hidden');
+    tasaWrap.classList.remove('hidden');
+    actualizarHeader('Selecciona el tipo de operación');
+    setTimeout(() => tasaWrap.classList.remove('opacity-0', 'scale-95'), 50);
+    estadoActual = 'modo';
+  }
+};
+
 
 btnCompartir.onclick = (e) => {
-  e.stopPropagation(); // prevenir cierre inmediato
-  menuCompartir.classList.remove('hidden');
+  e.stopPropagation();
+  btnCompartir.nextElementSibling.classList.remove('hidden');
 };
 
-// Cerrar si clickea fuera
-document.addEventListener('click', (e) => {
-  if (!menuCompartir.contains(e.target) && e.target !== btnCompartir) {
-    menuCompartir.classList.add('hidden');
-  }
-});
+opcionTexto.onclick = async () => {
+  btnCompartir.nextElementSibling.classList.add('hidden');
+  const fecha = tasaFechaEl.textContent;
+  const tasaF = parseFloat(tasa);
+  const raw = parseFloat(inputMonto.value.trim());
+  const montoIngresado = isNaN(raw) ? 0 : raw;
 
-// Compartir imagen
+const paisOrigen = paisesDisponibles.find(p => p.codigo === origenSeleccionado);
+const paisDestino = paisesDisponibles.find(p => p.codigo === destinoSeleccionado);
+
+let montoCalculado = mode === 'enviar'
+  ? Math.round(montoIngresado * tasaF)
+  : Math.round(montoIngresado / tasaF);
+
+if (mode === 'llegar') {
+  montoCalculado = redondearPorMoneda(montoCalculado, paisDestino.codigo);
+}
+
+
+
+const ingresadoFmt = montoIngresado.toLocaleString('es-AR');
+const calculadoFmt = montoCalculado.toLocaleString('es-VE');
+const tasaFmt = formatearTasa(tasaF);
+
+  const mensajePro = `📦 Transferencia calculada con ByteTransfer\n\n` +
+    (mode === 'enviar'
+      ? `💰 Monto a enviar: $${ingresadoFmt} ${paisOrigen.codigo} desde ${paisOrigen.nombre}\n📥 Monto a recibir: ${paisDestino.codigo} ${calculadoFmt} en ${paisDestino.nombre}`
+      : `📥 Monto a recibir: ${paisDestino.codigo} ${ingresadoFmt} en ${paisDestino.nombre}\n💰 Monto a enviar: $${calculadoFmt} ${paisOrigen.codigo} desde ${paisOrigen.nombre}`) +
+    `\n💱 Tasa del día: ${tasaFmt}\n📅 Fecha: ${fecha}`;
+
+  try {
+    await navigator.clipboard.writeText(mensajePro);
+    mostrarToast(mensajePro);
+  } catch (err) {
+    mostrarToast('⚠️ Error al copiar');
+    console.error(err);
+  }
+};
+
 opcionImagen.onclick = async () => {
-  menuCompartir.classList.add('hidden');
+  btnCompartir.nextElementSibling.classList.add('hidden');
   const canvas = await html2canvas(resTextContainer, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
   const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
   const file = new File([blob], 'byte-transfer-result.png', { type: 'image/png' });
@@ -275,7 +558,6 @@ opcionImagen.onclick = async () => {
       console.warn('Share cancelado o falló:', err);
     }
   } else {
-    // fallback
     const link = document.createElement('a');
     link.download = 'byte-transfer-result.png';
     link.href = canvas.toDataURL();
@@ -283,16 +565,33 @@ opcionImagen.onclick = async () => {
   }
 };
 
+document.addEventListener('click', e => {
+  const menu = btnCompartir.nextElementSibling;
+  if (!menu.contains(e.target) && e.target !== btnCompartir) {
+    menu.classList.add('hidden');
+  }
+});
 
-// Previsualización flotante (toast)
-const toastMensaje = document.getElementById('toastMensaje');
+// Ripple buttons
+document.querySelectorAll('.ripple-button').forEach(btn => {
+  btn.addEventListener('click', e => {
+    const ripple = document.createElement('span');
+    const d = Math.max(btn.clientWidth, btn.clientHeight);
+    const r = d / 2;
+    ripple.style.width = ripple.style.height = `${d}px`;
+    ripple.style.left = `${e.offsetX - r}px`;
+    ripple.style.top = `${e.offsetY - r}px`;
+    btn.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+  });
+});
 
-function mostrarToast(texto) {
-  toastMensaje.textContent = texto;
+// Toast
+function mostrarToast(txt) {
+  toastMensaje.textContent = txt;
   toastMensaje.classList.remove('hidden');
   toastMensaje.style.opacity = '1';
   toastMensaje.style.transform = 'scale(1)';
-  
   setTimeout(() => {
     toastMensaje.style.opacity = '0';
     toastMensaje.style.transform = 'scale(0.95)';
@@ -303,42 +602,14 @@ function mostrarToast(texto) {
   }, 4500);
 }
 
-// Función de copiar texto al hacer clic en “💬 Compartir texto”
-opcionTexto.onclick = async () => {
-  menuCompartir.classList.add('hidden');
-
-  const fecha = tasaFechaEl.textContent;
-  const tasaF = parseFloat(tasa);
-
-  const rawValue = parseFloat(inputMonto.value.trim());
-  const montoIngresado = isNaN(rawValue) ? 0 : rawValue;
-  let montoCalculado = mode === 'enviar'
-    ? Math.round(montoIngresado * tasaF)
-    : Math.round(montoIngresado / tasaF);
-
-  // ✅ Redondear ARS si modo es "llegar"
-  if (mode === 'llegar') {
-    const resto = montoCalculado % 100;
-    montoCalculado = resto >= 50
-      ? montoCalculado + (100 - resto)
-      : montoCalculado - resto;
-  }
-
-  const ingresadoFmt = montoIngresado.toLocaleString('es-AR');
-  const calculadoFmt = montoCalculado.toLocaleString('es-VE');
-
-  const tasaFmt = tasaF.toLocaleString('es-ES');
-  const mensajePro = `📦 Transferencia calculada con ByteTransfer\n\n` +
-    (mode === 'enviar'
-      ? `💰 Monto a enviar: $${ingresadoFmt} ARS\n📥 Monto a recibir: Bs. ${calculadoFmt}`
-      : `📥 Monto a recibir: Bs. ${ingresadoFmt}\n💰 Monto a enviar: $${calculadoFmt} ARS`) +
-    `\n💱 Tasa del día: ${tasaFmt}\n📅 Fecha: ${fecha}`;
-
-  try {
-    await navigator.clipboard.writeText(mensajePro);
-    mostrarToast(mensajePro); // visualiza la tarjetita
-  } catch (err) {
-    mostrarToast('⚠️ Error al copiar');
-    console.error(err);
-  }
+// Onload
+window.onload = () => {
+  mainHeader.classList.add('hidden');
+  document.getElementById('tasaWrap').classList.add('hidden');
+  step1.classList.add('hidden');
+  step2.classList.add('hidden');
+  resultado.classList.add('hidden');
+  step2Destino.classList.add('hidden');
+  step1Origen.classList.remove('hidden');
+  mostrarPaso1();
 };
