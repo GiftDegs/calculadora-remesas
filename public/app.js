@@ -222,6 +222,8 @@ async function mostrarPaso3() {
 
 function cambiarPaso(tipo) {
   mode = tipo;
+  estadoActual = 'monto'; // <-- necesario para que "Volver" sepa dónde estás
+
   const paisOrigen = paisesDisponibles.find(p => p.codigo === origenSeleccionado);
   const paisDestino = paisesDisponibles.find(p => p.codigo === destinoSeleccionado);
 
@@ -236,8 +238,53 @@ function cambiarPaso(tipo) {
   setTimeout(() => inputMonto.focus(), 300);
 }
 
+
 btnEnviar.onclick = () => cambiarPaso('enviar');
 btnLlegar.onclick = () => cambiarPaso('llegar');
+
+btnVolverGlobal.onclick = () => {
+  // Oculta errores si estaban visibles
+  errorMonto.classList.add('hidden');
+
+  switch (estadoActual) {
+    case 'resultado':
+      // Volver del resultado al ingreso de monto
+      resultado.classList.add('hidden');
+      resText.classList.remove('text-4xl');
+      step2.classList.remove('hidden');
+      tasaWrap.classList.remove('hidden');
+      setTimeout(() => tasaWrap.classList.remove('opacity-0', 'scale-95'), 50);
+      estadoActual = 'monto';
+      actualizarHeader('Ingresa el monto');
+      break;
+
+    case 'monto':
+      // Volver del monto a elegir modo (enviar / llegar)
+      step2.classList.add('hidden');
+      step1.classList.remove('hidden');
+      tasaWrap.classList.remove('hidden');
+      setTimeout(() => tasaWrap.classList.remove('opacity-0', 'scale-95'), 50);
+      estadoActual = 'modo';
+      actualizarHeader('Selecciona el tipo de operación');
+      break;
+
+    case 'modo':
+      // Volver a elegir destino
+      mostrarPaso2();
+      break;
+
+    case 'destino':
+      // Volver a elegir origen
+      mostrarPaso1();
+      break;
+
+    case 'origen':
+    default:
+      // Ya estás en el primer paso
+      btnVolverGlobal.classList.add('hidden');
+      break;
+  }
+};
 
 // --- Normalización input ---
 inputMonto.addEventListener('input', () => {
