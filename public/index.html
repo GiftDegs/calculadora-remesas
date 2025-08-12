@@ -4,13 +4,27 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Calculadora de Cambios</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script>
+  // Aplica el tema guardado o el preferido del SO, antes de cargar estilos
+  (function () {
+    try {
+      const saved = localStorage.getItem('theme'); // 'dark' | 'light' | null
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldDark = saved ? saved === 'dark' : prefersDark;
+      if (shouldDark) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+    } catch (_) {
+    }
+  })();
+</script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+    <script>
     tailwind.config = { darkMode: 'class' };
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-  <script src="app.js" defer></script>
+  <script type="module" src="src/main.js" defer></script>
+
 
   <style>
     .tasa-shine { position: relative; overflow: hidden; }
@@ -54,6 +68,24 @@
 .result-pop {
   animation: resultPop 0.6s ease-in-out forwards;
 }
+/* Entrada / salida suaves para la confirmación */
+@keyframes confirmIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes confirmOut {
+  from { opacity: 1; transform: translateY(0)    scale(1); }
+  to   { opacity: 0; transform: translateY(-4px) scale(0.98); }
+}
+.confirm-in  { animation: confirmIn 0.28s ease-out both; }
+.confirm-out { animation: confirmOut 0.24s ease-in forwards; }
+
+/* Parpadeo MUY leve mientras está visible */
+@keyframes subtleBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.78; }
+}
+.confirm-blink { animation: subtleBlink 1.2s ease-in-out infinite; }
 
   </style>
 </head>
@@ -98,11 +130,28 @@
       <p id="tasaFecha" class="text-sm italic text-[#666666] dark:text-gray-400">—</p>
       <div id="tasaCard" class="tasa-shine mt-2 min-w-[10rem] px-6 py-6 flex items-center justify-center rounded-2xl bg-[#E1F0FF]/80 dark:bg-white/10 backdrop-blur-md ring-1 ring-black/5 shadow-[0_8px_20px_rgba(0,0,0,0.12)] transition-all duration-300 relative">
         <span id="tasaValue" class="text-6xl font-extrabold text-blue-900 dark:text-blue-300 tracking-tight drop-shadow-lg select-none transition-all duration-300 pulse-epic">–</span>
-        <span id="tasaConfirmacion" class="absolute bottom-2 text-green-600 text-sm font-medium hidden">Tasa actualizada ✅</span>
-      </div>
+            </div>
+
+<!-- Advertencia roja -->
+<div id="tasaAdvertencia"
+     class="hidden mt-3 w-full max-w-md text-red-800 bg-red-50 border border-red-200 rounded-xl px-4 py-3 shadow-sm text-sm font-semibold flex items-start gap-2 justify-center ring-1 ring-red-300"
+     role="status" aria-live="polite">
+  <span id="tasaAdvertenciaTexto">🚨 Tasa desactualizada 🚨</span>
+</div>
+
+<!-- Confirmación verde -->
+<div id="tasaConfirmacion"
+     class="hidden mt-3 w-full max-w-md text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3 shadow-sm text-sm font-semibold flex items-start gap-2 justify-center"
+     role="status" aria-live="polite">
+    <span id="tasaConfirmacionTexto">Tasa actualizada</span>
+</div>
+
     </div>
 
-    <section id="step1" class="transition-colors duration-500 flex flex-col items-center gap-4 text-center">
+    <section id="step1" class="transition-colors duration-500 flex flex-col items-center gap-1 text-center">
+      <p class="text-sm text-gray-600 dark:text-gray-300 italic">
+    Tasa sujeta a cambios sin previo aviso.
+  </p>
       <h2 class="text-xl font-semibold">Elige una opción</h2>
       <button id="btnEnviar" class="ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105">¿Cuántos pesos quieres enviar?</button>
       <button id="btnLlegar" class="ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105">¿Cuánto bolívares quieres que lleguen?</button>
@@ -111,7 +160,10 @@
      <section id="step2" class="transition-colors duration-500 hidden flex flex-col items-center gap-4">
       <p id="preguntaMonto" class="text-lg font-semibold text-gray-800 dark:text-white opacity-0 translate-y-4 transition-all duration-300"></p>
       <p id="errorMonto" class="text-[#FF0000] font-semibold hidden transition-all duration-300"></p>
+      <p id="ayudaMonto" class="text-sm text-gray-600 dark:text-gray-300 min-h-[1.25rem]"></p>
       <input id="inputMonto" type="text" inputmode="decimal" placeholder="Ingresa el monto"
+      
+
         class="w-72 text-center text-2xl font-semibold px-6 py-4 rounded-xl border border-blue-300 shadow bg-white/60 text-gray-800 placeholder-gray-400 dark:bg-gray-100 dark:text-gray-800 dark:placeholder-gray-600 backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-blue-300 transition" />
        <div class="flex gap-4">
 

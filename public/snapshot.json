@@ -1,27 +1,27 @@
 {
   "ARS": {
-    "compra": 1339.8565,
-    "venta": 1334.2715,
+    "compra": 1337.6295,
+    "venta": 1332.484,
     "ajuste": 8
   },
   "COP": {
-    "compra": 4011.493,
-    "venta": 3992.3095,
+    "compra": 3994.729,
+    "venta": 3977.78,
     "ajuste": 8
   },
   "MXN": {
-    "compra": 18.778,
-    "venta": 18.6975,
+    "compra": 18.7635,
+    "venta": 18.685,
     "ajuste": 15
   },
   "PEN": {
-    "compra": 3.5563,
-    "venta": 3.54645,
+    "compra": 3.5443,
+    "venta": 3.5284,
     "ajuste": 7
   },
   "CLP": {
-    "compra": 973.904,
-    "venta": 969.1055,
+    "compra": 973.826,
+    "venta": 970.1235,
     "ajuste": 7
   },
   "BRL": {
@@ -30,48 +30,48 @@
     "ajuste": 8
   },
   "VES": {
-    "compra": 185.84765,
-    "venta": 185.383031,
+    "compra": 185.1078,
+    "venta": 184.645031,
     "ajuste": 4
   },
-  "timestamp": "2025-08-07T23:14:37.404Z",
+  "timestamp": "2025-08-11T20:00:48.334Z",
   "cruces": {
     "ARS-COP": 2.7,
     "ARS-MXN": 0.013,
-    "ARS-PEN": 0.00244,
-    "ARS-CLP": 0.665,
-    "ARS-BRL": 0.00377,
+    "ARS-PEN": 0.00243,
+    "ARS-CLP": 0.667,
+    "ARS-BRL": 0.00378,
     "ARS-VES": 0.127,
-    "COP-ARS": 0.306,
-    "COP-MXN": 0.00429,
+    "COP-ARS": 0.307,
+    "COP-MXN": 0.0043,
     "COP-PEN": 0.000813,
-    "COP-CLP": 0.222,
+    "COP-CLP": 0.223,
     "COP-BRL": 0.00126,
     "COP-VES": 23.4,
     "MXN-ARS": 60.4,
-    "MXN-COP": 180.7,
-    "MXN-PEN": 0.161,
+    "MXN-COP": 180.2,
+    "MXN-PEN": 0.16,
     "MXN-CLP": 43.9,
     "MXN-BRL": 0.249,
     "MXN-VES": 8.4,
-    "PEN-ARS": 348.9,
-    "PEN-COP": 1044,
+    "PEN-ARS": 349.6,
+    "PEN-COP": 1043.7,
     "PEN-MXN": 4.9,
-    "PEN-CLP": 253.4,
+    "PEN-CLP": 254.6,
     "PEN-BRL": 1.4,
-    "PEN-VES": 48.5,
+    "PEN-VES": 48.4,
     "CLP-ARS": 1.3,
     "CLP-COP": 3.8,
     "CLP-MXN": 0.018,
-    "CLP-PEN": 0.00339,
+    "CLP-PEN": 0.00337,
     "CLP-BRL": 0.00524,
-    "CLP-VES": 0.177,
-    "BRL-ARS": 213.9,
-    "BRL-COP": 639.9,
+    "CLP-VES": 0.176,
+    "BRL-ARS": 213.6,
+    "BRL-COP": 637.6,
     "BRL-MXN": 3,
-    "BRL-PEN": 0.568,
-    "BRL-CLP": 155.3,
-    "BRL-VES": 29.7,
+    "BRL-PEN": 0.566,
+    "BRL-CLP": 155.5,
+    "BRL-VES": 29.6,
     "VES-ARS": 6.9,
     "VES-COP": 20.6,
     "VES-MXN": 0.097,
@@ -79,5 +79,5 @@
     "VES-CLP": 5,
     "VES-BRL": 0.028
   },
-  "guardado_en": "2025-08-07T23:14:37.406Z"
+  "guardado_en": "2025-08-11T20:00:48.336Z"
 }
