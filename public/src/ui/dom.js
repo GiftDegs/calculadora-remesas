@@ -35,5 +35,6 @@ export const DOM = {
   tasaConfirmacionTexto: document.getElementById('tasaConfirmacionTexto'),
   tasaAdvertencia: document.getElementById('tasaAdvertencia'),
   tasaAdvertenciaTexto: document.getElementById('tasaAdvertenciaTexto'),
-  tasaCard: document.getElementById('tasaCard')
+  tasaCard: document.getElementById('tasaCard'),
+  pillHorario: document.getElementById('pillHorario'),
 };

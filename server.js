@@ -6,12 +6,21 @@ const axios = require("axios");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware estático y JSON
-app.use(express.json());
+// ---------- Config Gist (persistencia) ----------
+const GIST_ID = process.env.GIST_ID;
+const GIST_FILENAME = process.env.GIST_FILENAME || "snapshot.json";
+const GH_TOKEN = process.env.GH_TOKEN;
+const USE_GIST = !!(GIST_ID && GH_TOKEN);
+
+// Auth opcional para guardar (solo si seteas ADMIN_KEY)
+const ADMIN_KEY = process.env.ADMIN_KEY || null;
+
+// ---------- Middlewares ----------
+app.use(express.json({ limit: "1mb" })); // por si crece el payload
 app.use("/admin", express.static(path.join(__dirname, "public/admin")));
 app.use(express.static(path.join(__dirname, "public")));
 
-// ---- Utilidades ----
+// ---------- Utils ----------
 function formatearTasa(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return null;
@@ -21,13 +30,36 @@ function formatearTasa(v) {
   return +n.toFixed(6);
 }
 
-// ---- SNAPSHOT ----
-app.get("/api/snapshot", (req, res) => {
-  const ruta = path.join(__dirname, "public", "snapshot.json");
-  res.set("Cache-Control", "no-store"); // evita cache viejo del navegador
-  if (!fs.existsSync(ruta)) return res.json({});
+async function readGistSnapshot() {
+  const { data } = await axios.get(`https://api.github.com/gists/${GIST_ID}`, {
+    headers: { Authorization: `Bearer ${GH_TOKEN}`, Accept: "application/vnd.github+json" },
+  });
+  const file = data.files[GIST_FILENAME];
+  if (!file || !file.content) return {};
+  return JSON.parse(file.content);
+}
 
+async function writeGistSnapshot(obj) {
+  await axios.patch(
+    `https://api.github.com/gists/${GIST_ID}`,
+    { files: { [GIST_FILENAME]: { content: JSON.stringify(obj, null, 2) } } },
+    { headers: { Authorization: `Bearer ${GH_TOKEN}`, Accept: "application/vnd.github+json" } }
+  );
+}
+
+// ---------- Rutas ----------
+app.get("/healthz", (req, res) => res.send("ok"));
+
+app.get("/api/snapshot", async (req, res) => {
+  res.set("Cache-Control", "no-store");
   try {
+    if (USE_GIST) {
+      const snap = await readGistSnapshot();
+      return res.json(snap);
+    }
+    // Fallback local (desarrollo)
+    const ruta = path.join(__dirname, "public", "snapshot.json");
+    if (!fs.existsSync(ruta)) return res.json({});
     const data = fs.readFileSync(ruta, "utf8");
     return res.json(JSON.parse(data));
   } catch (e) {
@@ -36,34 +68,44 @@ app.get("/api/snapshot", (req, res) => {
   }
 });
 
-app.post("/api/guardar-snapshot", (req, res) => {
-  const snapshotActualPath = path.join(__dirname, "public", "snapshot.json");
-  const fecha = new Date().toISOString().slice(0, 10);
-  const dirSnapshots = path.join(__dirname, "public", "snapshots");
-  const snapshotHistPath = path.join(dirSnapshots, `${fecha}.json`);
-
-  // Leer snapshot anterior si existe
-  let snapshotAnterior = {};
-  if (fs.existsSync(snapshotActualPath)) {
-    try {
-      snapshotAnterior = JSON.parse(fs.readFileSync(snapshotActualPath, "utf8"));
-    } catch (e) {
-      console.warn("⚠️ Snapshot previo corrupto, regenerando:", e.message);
-    }
+app.post("/api/guardar-snapshot", async (req, res) => {
+  // Auth opcional
+  if (ADMIN_KEY && req.headers["x-admin-key"] !== ADMIN_KEY) {
+    return res.status(401).json({ error: "unauthorized" });
   }
 
-  // Formatear solo cruces nuevos
+  const fecha = new Date().toISOString().slice(0, 10);
+
+  // 1) Leer snapshot anterior (Gist o local)
+  let snapshotAnterior = {};
+  try {
+    if (USE_GIST) snapshotAnterior = await readGistSnapshot();
+    else {
+      const p = path.join(__dirname, "public", "snapshot.json");
+      if (fs.existsSync(p)) snapshotAnterior = JSON.parse(fs.readFileSync(p, "utf8"));
+    }
+  } catch (e) {
+    console.warn("⚠️ Snapshot previo corrupto, regenerando:", e.message);
+  }
+
+  // 2) Formatear solo cruces nuevos
   const crucesNuevos = req.body?.cruces || {};
   const crucesNuevosFormateados = {};
   for (const k of Object.keys(crucesNuevos)) {
-    const f = formatearTasa(crucesNuevos[k]);
-    if (f != null) crucesNuevosFormateados[k] = f;
+    const n = Number(crucesNuevos[k]);
+    if (!Number.isFinite(n)) continue;
+    let f = null;
+    if (n >= 1) f = +n.toFixed(1);
+    else if (n >= 0.01) f = +n.toFixed(3);
+    else if (n >= 0.00099) f = +n.toFixed(5);
+    else f = +n.toFixed(6);
+    crucesNuevosFormateados[k] = f;
   }
 
-  // Merge con cruces anteriores
+  // 3) Merge con cruces anteriores
   const crucesCompletos = { ...(snapshotAnterior.cruces || {}), ...crucesNuevosFormateados };
 
-  // Armar snapshot final
+  // 4) Datos finales
   const datosFinales = {
     ...snapshotAnterior,
     ...req.body,
@@ -71,17 +113,20 @@ app.post("/api/guardar-snapshot", (req, res) => {
     guardado_en: new Date().toISOString(),
   };
 
+  // 5) Guardar (Gist o local con histórico)
   try {
-    if (!fs.existsSync(dirSnapshots)) fs.mkdirSync(dirSnapshots, { recursive: true });
-
-    fs.writeFileSync(snapshotActualPath, JSON.stringify(datosFinales, null, 2));
-    console.log("💾 Snapshot actualizado");
-
-    if (!fs.existsSync(snapshotHistPath)) {
-      fs.writeFileSync(snapshotHistPath, JSON.stringify(datosFinales, null, 2));
-      console.log("📦 Snapshot histórico guardado:", fecha);
+    if (USE_GIST) {
+      await writeGistSnapshot(datosFinales);
+    } else {
+      const snapshotActualPath = path.join(__dirname, "public", "snapshot.json");
+      const dirSnapshots = path.join(__dirname, "public", "snapshots");
+      const snapshotHistPath = path.join(dirSnapshots, `${fecha}.json`);
+      if (!fs.existsSync(dirSnapshots)) fs.mkdirSync(dirSnapshots, { recursive: true });
+      fs.writeFileSync(snapshotActualPath, JSON.stringify(datosFinales, null, 2));
+      if (!fs.existsSync(snapshotHistPath)) {
+        fs.writeFileSync(snapshotHistPath, JSON.stringify(datosFinales, null, 2));
+      }
     }
-
     return res.json({ status: "ok" });
   } catch (err) {
     console.error("❌ Error al guardar snapshot:", err.message);
@@ -90,7 +135,7 @@ app.post("/api/guardar-snapshot", (req, res) => {
 });
 
 // ---- BINANCE con cache simple (TTL 45s) ----
-const binanceCache = new Map(); // key: `${fiat}|${tradeType}`
+const binanceCache = new Map();
 const BINANCE_TTL_MS = 45 * 1000;
 
 app.post("/api/binance", async (req, res) => {
@@ -120,22 +165,13 @@ app.post("/api/binance", async (req, res) => {
       },
       { headers: { "Content-Type": "application/json" } }
     );
-
-    // cachear
     binanceCache.set(key, { t: now, data });
     return res.json(data);
   } catch (error) {
     console.error("❌ Binance:", error?.message);
-    // fallback si existía cache viejo
     if (cached) return res.json(cached.data);
     return res.status(500).json({ error: "Fallo conexión Binance" });
   }
-});
-
-// ---- Login (opcional; por ahora solo retorna token fake) ----
-app.post("/api/login", (req, res) => {
-  // Mantengo este endpoint porque tu admin lo usa, pero sin validar nada todavía.
-  return res.json({ token: "ok" });
 });
 
 // ---- Start ----

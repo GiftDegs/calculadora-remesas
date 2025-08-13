@@ -3,16 +3,74 @@ import { paisesDisponibles, CONFIG } from "../core/config.js";
 import { formatearTasa, formatearFecha, redondearPorMoneda, userLocale } from "../core/utils.js";
 import { calcularCruce } from "../core/fx.js";
 import { obtenerTasa } from "../services/rates.js";
+import { obtenerStatus } from "../services/status.js";
 import { mostrarToast } from "./toasts.js";
 import { showBanner, hideBanner, mostrarConfirmacionVerdeAutoOcultar } from "./banners.js";
+import { evaluateOps, openingTextTodayLocal } from "../core/time.js";
+
 
 let origenSeleccionado = null;
 let destinoSeleccionado = null;
 let mode = null;
 let tasa = null;
 let tasaCompraUSD = null;
-let tasaDesactualizada = true;
+let ops = { open: false, fresh: false, allowWhats: false, message: '' }; // estado operativo
 let lastCalc = null;
+
+function updateHorarioPill() {
+  // Garantiza que el nodo exista (lo crea si falta)
+  let el = DOM.pillHorario || document.getElementById('pillHorario');
+  if (!el) {
+    const wrap = document.createElement('div');
+    wrap.className = 'fixed top-3 left-1/2 -translate-x-1/2 z-40 pointer-events-none';
+    el = document.createElement('div');
+    el.id = 'pillHorario';
+    el.className = 'pointer-events-auto px-4 py-1.5 rounded-full text-sm font-bold tracking-wide shadow-lg border backdrop-blur-md hidden';
+    wrap.appendChild(el);
+    document.body.appendChild(wrap);
+    try { DOM.pillHorario = el; } catch (_) {}
+  }
+
+  const hoy = openingTextTodayLocal(userLocale); // "Hoy: 9:00–21:00" en zona local
+  const abierto = ops.open === true;
+
+  // Contenido rico (ping rojo cuando está cerrado)
+  el.innerHTML = abierto
+    ? `✅ <span class="ml-1">ABIERTO</span> · <span class="opacity-90">${hoy}</span>`
+    : `<span class="relative mr-1 inline-flex items-center">
+         <span class="absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75 animate-ping"></span>
+         <span class="relative inline-flex h-3 w-3 rounded-full bg-red-600"></span>
+       </span>
+       <span class="ml-1">CERRADO</span> · <span class="opacity-90">${hoy}</span>`;
+
+  el.classList.remove('hidden');
+
+  // Reset de colores
+  el.classList.remove(
+    'bg-emerald-600','text-white','border-emerald-700','shadow-emerald-200/50',
+    'bg-red-600','border-red-700','shadow-red-200/50','animate-pulse',
+    'bg-gray-800','border-gray-700/70','text-white'
+  );
+
+  if (abierto) {
+    // Abierto (verde fuerte)
+    el.classList.add('bg-emerald-600','text-white','border-emerald-700','shadow-lg');
+  } else {
+    // Cerrado (rojo fuerte + pequeño pulso)
+    el.classList.add('bg-red-600','text-white','border-red-700','shadow-lg','animate-pulse');
+  }
+}
+
+
+function updateWhatsButton(){
+  if (!DOM.btnWhats) return;
+  const allow = ops.allowWhats;
+  DOM.btnWhats.disabled = !allow;
+  DOM.btnWhats.classList.toggle('opacity-50', !allow);
+  DOM.btnWhats.classList.toggle('cursor-not-allowed', !allow);
+  DOM.btnWhats.textContent = allow ? 'Ir a WhatsApp' : 'Cerrado / Solo referencia';
+}
+
 
 function setModoButtonsEnabled(enabled) {
   [DOM.btnEnviar, DOM.btnLlegar].forEach(b => {
@@ -100,7 +158,9 @@ function updateAyudaRangos() {
   const nf = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 2 });
   const minFmt = nf.format(Math.max(0, rango.min));
   const maxFmt = nf.format(Math.max(rango.min, rango.max));
-  DOM.ayudaMonto.textContent = `Mínimo: ${minFmt} ${codigoInput} • Máximo: ${maxFmt} ${codigoInput}`;
+  const base = `Mínimo: ${minFmt} ${codigoInput} • Máximo: ${maxFmt} ${codigoInput}`;
+  const ref = (!ops.allowWhats) ? `\n⚠️ Modo referencia: la tasa no está vigente. ${openingTextTodayLocal(userLocale)}` : '';
+  DOM.ayudaMonto.textContent = base + ref;
 }
 
 function validarMontoEnVivo() {
@@ -163,40 +223,15 @@ export function mostrarPaso1() {
   DOM.btnVolverGlobal.classList.add("hidden");
   DOM.step1Origen.classList.remove("hidden");
   DOM.step1Origen.classList.add("fade-slide-in");
-
-  // Fallback por si el import de países falló por alguna razón
-  const fallback = [
-    { codigo: 'ARS', nombre: 'Argentina', emoji: '🇦🇷' },
-    { codigo: 'COP', nombre: 'Colombia',  emoji: '🇨🇴' },
-    { codigo: 'PEN', nombre: 'Perú',      emoji: '🇵🇪' },
-    { codigo: 'CLP', nombre: 'Chile',     emoji: '🇨🇱' },
-    { codigo: 'MXN', nombre: 'México',    emoji: '🇲🇽' },
-    { codigo: 'BRL', nombre: 'Brasil',    emoji: '🇧🇷' },
-    { codigo: 'VES', nombre: 'Venezuela', emoji: '🇻🇪' },
-  ];
-
-  try {
-    DOM.origenBtns.innerHTML = '';
-    const lista = Array.isArray(paisesDisponibles) && paisesDisponibles.length ? paisesDisponibles : fallback;
-    lista.forEach(p => {
-      const btn = document.createElement('button');
-      btn.textContent = `${p.emoji} ${p.nombre}`;
-      btn.className = 'ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105';
-      btn.onclick = () => { origenSeleccionado = p.codigo; mostrarPaso2(); };
-      DOM.origenBtns.appendChild(btn);
+  DOM.origenBtns.innerHTML = "";
+  paisesDisponibles.forEach(p => {
+    const btn = document.createElement("button");
+    btn.textContent = `${p.emoji} ${p.nombre}`;
+    btn.className = "ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105";
+    btn.onclick = () => { origenSeleccionado = p.codigo; mostrarPaso2(); };
+    DOM.origenBtns.appendChild(btn);
     });
-  } catch (e) {
-    console.error('Error creando botones de origen:', e);
-    // Último recurso, pinta el fallback “a mano”
-    DOM.origenBtns.innerHTML = fallback.map(p =>
-      `<button class="ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105" data-cod="${p.codigo}">${p.emoji} ${p.nombre}</button>`
-    ).join('');
-    DOM.origenBtns.querySelectorAll('button').forEach(b=>{
-      b.onclick = () => { origenSeleccionado = b.dataset.cod; mostrarPaso2(); };
-    });
-  }
 }
-
 
 function mostrarPaso2() {
   ocultarTodo();
@@ -223,43 +258,61 @@ async function mostrarPaso3() {
   actualizarHeader("Selecciona el tipo de operación");
   actualizarTextosUI();
 
-  const { tasa: tasaCruda, compra, fecha } = await obtenerTasa(origenSeleccionado, destinoSeleccionado);
+  const [{ tasa: tasaCruda, compra, fecha }, manual] = await Promise.all([
+    obtenerTasa(origenSeleccionado, destinoSeleccionado),  // {tasa, compra, fecha}
+    obtenerStatus()                                       // {open|null, message}
+  ]);
+
   const tNum = Number(tasaCruda);
   const tieneTasa = Number.isFinite(tNum) && tNum > 0;
   if (Number.isFinite(compra)) tasaCompraUSD = compra;
 
+  // === Evaluación operativa ===
+  ops = evaluateOps(fecha, manual);
+  updateHorarioPill();
+  updateWhatsButton();
+
+  // UI de banners segun estado
   if (tieneTasa) {
     tasa = tNum;
     DOM.tasaValue.textContent = formatearTasa(tasa);
     DOM.tasaFechaEl.textContent = formatearFecha(fecha);
-    let dias = 999;
-    if (fecha) {
-      const MS = 86400000;
-      dias = Math.floor((Date.now() - fecha) / MS);
-    }
-    if (dias > 1) {
-      tasaDesactualizada = true;
-      hideBanner(DOM.tasaConfirmacion);
-      DOM.tasaAdvertenciaTexto.textContent = "🚨 Tasa desactualizada 🚨";
-      showBanner(DOM.tasaAdvertencia);
-    } else {
-      tasaDesactualizada = false;
-      hideBanner(DOM.tasaAdvertencia);
-      DOM.tasaConfirmacionTexto.textContent = "✅ Tasa actualizada";
-      mostrarConfirmacionVerdeAutoOcultar(DOM.tasaConfirmacion, 4000);
-    }
-    setModoButtonsEnabled(!tasaDesactualizada);
+
+   if (ops.fresh) {
+    hideBanner(DOM.tasaAdvertencia);
+    DOM.tasaConfirmacionTexto.textContent = "✅ Tasa actualizada";
+    mostrarConfirmacionVerdeAutoOcultar(DOM.tasaConfirmacion, 4000);
+  } else {
+    hideBanner(DOM.tasaConfirmacion);
+    DOM.tasaAdvertenciaTexto.textContent = "Tasa desactualizada";
+    showBanner(DOM.tasaAdvertencia);
+  }
+
+    // Ahora SIEMPRE dejamos elegir modo (aunque sea referencia)
+    setModoButtonsEnabled(true);
     updateAyudaRangos();
     validarMontoEnVivo();
+
     DOM.tasaValue.classList.add("animate-pulse");
     setTimeout(() => DOM.tasaValue.classList.remove("animate-pulse"), 1000);
+
   } else {
-    tasaDesactualizada = true;
+    // Sin tasa → referencia con aviso
+    tasa = null;
     setModoButtonsEnabled(false);
     DOM.tasaValue.textContent = "⚠️ No disponible";
     DOM.tasaFechaEl.textContent = "—";
     hideBanner(DOM.tasaConfirmacion);
     DOM.tasaAdvertenciaTexto.textContent = "No hay tasa disponible";
+
+    setTimeout(() => {
+  DOM.loader.classList.add("hidden");
+  DOM.resultado.classList.remove("hidden");
+  DOM.resultado.classList.add("fade-scale-in");
+  DOM.resText.classList.add("text-4xl");
+  updateHorarioPill(); // mantiene el pill al día
+}, 1200);
+
     showBanner(DOM.tasaAdvertencia);
     updateAyudaRangos();
     validarMontoEnVivo();
@@ -267,17 +320,18 @@ async function mostrarPaso3() {
 }
 
 function cambiarPaso(tipo) {
-  if (tasaDesactualizada) {
-    mostrarToast(DOM, "⚠️ No podés continuar: la tasa está desactualizada. Actualizá y volvé a intentar.");
-    DOM.tasaAdvertencia.classList.add("animate-bounce");
-    setTimeout(() => DOM.tasaAdvertencia.classList.remove("animate-bounce"), 800);
-    return;
-  }
   mode = tipo;
   const { preguntaEnviar, preguntaLlegar } = textosSegunPaises();
   DOM.preguntaMonto.textContent = tipo === "enviar" ? preguntaEnviar : preguntaLlegar;
+
   resetearCampoMonto();
   updateAyudaRangos();
+
+  // Si estamos en referencia, avisamos pero dejamos continuar
+  if (!ops.allowWhats) {
+    mostrarToast(DOM, "⚠️ Modo referencia: cálculos orientativos. WhatsApp deshabilitado.");
+  }
+
   DOM.preguntaMonto.classList.remove("opacity-0", "translate-y-4");
   DOM.preguntaMonto.classList.add("opacity-100", "translate-y-0");
   DOM.step1.classList.add("hidden");
@@ -286,7 +340,6 @@ function cambiarPaso(tipo) {
 }
 
 export function wireEvents() {
-  // toggle dark
   (() => {
     const isDark = document.documentElement.classList.contains("dark");
     DOM.btnToggleDark.textContent = isDark ? "🌞 Claro" : "🌙 Oscuro";
@@ -297,11 +350,9 @@ export function wireEvents() {
     DOM.btnToggleDark.textContent = isDark ? "🌞 Claro" : "🌙 Oscuro";
   });
 
-  // botones modo
   DOM.btnEnviar.onclick = () => cambiarPaso("enviar");
   DOM.btnLlegar.onclick = () => cambiarPaso("llegar");
 
-  // volver
   DOM.btnVolverGlobal.onclick = () => {
     if (!DOM.step2.classList.contains("hidden")) {
       DOM.resultado.classList.add("hidden");
@@ -315,7 +366,6 @@ export function wireEvents() {
     }
   };
 
-  // input
   let scrollPrev = 0;
   DOM.inputMonto.addEventListener("focus", () => {
     scrollPrev = window.scrollY;
@@ -344,7 +394,6 @@ export function wireEvents() {
     validarMontoEnVivo();
   });
 
-  // calcular
   DOM.btnCalcular.onclick = () => {
     const raw = DOM.inputMonto.value.trim();
     const monto = parseFloat(raw);
@@ -357,7 +406,7 @@ export function wireEvents() {
     const usd = montoEnPesos / tasaCompraUSD;
     if (usd < CONFIG.MIN_USD) { DOM.errorMonto.textContent = `⚠️ El monto mínimo permitido es equivalente a ${CONFIG.MIN_USD} USD`; DOM.errorMonto.classList.remove("hidden"); return; }
     if (usd > CONFIG.MAX_USD) { DOM.errorMonto.textContent = `⚠️ El monto máximo permitido es equivalente a ${CONFIG.MAX_USD} USD`; DOM.errorMonto.classList.remove("hidden"); return; }
-    if (usd >= 300) { mostrarToast(DOM, "ℹ️ Montos mayores a 300 USD se envían en varias partes."); }
+    if (!ops.allowWhats) { mostrarToast(DOM, "⚠️ Modo referencia: valores orientativos."); }
     DOM.errorMonto.classList.add("hidden");
 
     const o = obtenerPais(origenSeleccionado), d = obtenerPais(destinoSeleccionado);
@@ -371,20 +420,26 @@ export function wireEvents() {
 
     lastCalc = { mode, origen: o, destino: d, montoIngresado: monto, montoCalculado: calcRed, tasa: t, fecha };
 
+    const refBadge = (!ops.allowWhats)
+      ? `<div class="mt-2 inline-block text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded px-2 py-1">MODO REFERENCIA</div>`
+      : ``;
+
     const mensaje = mode === "enviar"
       ? `<div class="text-sm italic text-gray-500 dark:text-gray-400">Enviando desde ${o.nombre}</div>
          <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">$${montoFmt} ${o.codigo}</div>
          <div class="text-base text-gray-600 dark:text-gray-300 mt-1">recibirás</div>
          <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">${d.codigo} ${calcFmt}</div>
+         ${refBadge}
          <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">Calculado con la tasa del día ${fecha} — <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span></div>`
       : `<div class="text-sm italic text-gray-500 dark:text-gray-400">Para recibir en ${d.nombre}</div>
          <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">${d.codigo} ${montoFmt}</div>
          <div class="text-base text-gray-600 dark:text-gray-300 mt-1">debes enviar</div>
          <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">$${calcFmt} ${o.codigo}</div>
+         ${refBadge}
          <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">Calculado con la tasa del día ${fecha} — <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span></div>`;
 
     DOM.resText.innerHTML = mensaje;
-    if (!DOM.soundSuccess.muted) DOM.soundSuccess.play();
+    if (ops.allowWhats && !DOM.soundSuccess.muted) DOM.soundSuccess.play();
 
     DOM.step2.classList.add("hidden");
     DOM.tasaWrap.classList.add("transition", "duration-500", "ease-out", "opacity-0", "scale-95");
@@ -396,10 +451,10 @@ export function wireEvents() {
       DOM.resultado.classList.remove("hidden");
       DOM.resultado.classList.add("fade-scale-in");
       DOM.resText.classList.add("text-4xl");
-    }, 1500);
+      updateWhatsButton();
+    }, 1200);
   };
 
-  // recalcular
   DOM.btnRecalcular.onclick = () => {
     resetearCampoMonto();
     DOM.resText.classList.remove("text-4xl");
@@ -425,3 +480,6 @@ export function wireEvents() {
 }
 
 export function getLastCalc() { return lastCalc; }
+
+// Nuevo: expone si WhatsApp está habilitado (para sharing.js)
+export function getOpsState() { return ops; }
