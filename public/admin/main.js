@@ -247,8 +247,12 @@ function renderTarjetasPaises(modoEdicion = false) {
                  data-fi="${p.fiat}"
                  data-tipo="ajuste"
                  value="${ajuste}"
-                 class="w-16 px-1 py-0.5 border border-gray-300 rounded-md text-right bg-white text-xs
-                        focus:outline-none focus:ring-2 focus:ring-blue-400" />`
+                 class="w-72 text-center text-2xl font-semibold px-6 py-4 rounded-xl border
+       border-blue-300 shadow bg-white/60 text-gray-800 placeholder-gray-400
+       dark:bg-white/10 dark:text-white dark:placeholder-gray-400
+       dark:border-blue-300/40 backdrop-blur-md
+       focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+ />`
             : `<div class="w-12 text-right font-semibold text-gray-800">${ajuste} %</div>`
         }
       </div>

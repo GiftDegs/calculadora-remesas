@@ -8,59 +8,103 @@ import { mostrarToast } from "./toasts.js";
 import { showBanner, hideBanner, mostrarConfirmacionVerdeAutoOcultar } from "./banners.js";
 import { evaluateOps, openingTextTodayLocal } from "../core/time.js";
 
-
 let origenSeleccionado = null;
 let destinoSeleccionado = null;
 let mode = null;
 let tasa = null;
 let tasaCompraUSD = null;
-let ops = { open: false, fresh: false, allowWhats: false, message: '' }; // estado operativo
 let lastCalc = null;
+let modalActivo = false;
+let ops = { open: false, fresh: false, allowWhats: false, message: '' };
+
+function mostrarModalMontoGrande(callback) {
+  modalActivo = true;
+  const modal = document.getElementById("modalMontoGrande");
+  const btnCerrar = document.getElementById("btnCerrarModalMonto");
+
+  if (!modal || !btnCerrar) return;
+
+  modal.classList.remove("hidden");
+  document.body.classList.add("modal-activo");
+  DOM.inputMonto.blur(); // quitar foco
+
+  const cerrarYContinuar = () => {
+    modalActivo = false;
+    modal.classList.add("hidden");
+    document.body.classList.remove("modal-activo");
+    btnCerrar.removeEventListener("click", cerrarYContinuar);
+    if (typeof callback === "function") callback();
+  };
+
+  btnCerrar.addEventListener("click", cerrarYContinuar);
+}
+
+
+// Back: mostrar/ocultar (sin registrar click aquí para evitar duplicados)
+(function initBackButton(){
+  const btn = document.getElementById('btnVolverGlobal');
+  if (!btn) return;
+
+  // Exponer helper global mínimo
+  window.showBack = (show = true) => {
+    btn.classList.toggle('hidden', !show);
+  };
+})();
+
+// --- Mostrar pill desde el arranque (Paso 1) ---
+(async function initPillEarly(){
+  try {
+    const manual = await obtenerStatus(); // {open|null, message}
+    // No tenemos snapshot aún => fresh=false, pero el pill ya muestra ABIERTO/CERRADO por horario + override
+    ops = evaluateOps(null, manual);
+  } catch {
+    ops = evaluateOps(null, { open: null, message: '' });
+  }
+  updateHorarioPill();
+})();
 
 function updateHorarioPill() {
-  // Garantiza que el nodo exista (lo crea si falta)
-  let el = DOM.pillHorario || document.getElementById('pillHorario');
-  if (!el) {
-    const wrap = document.createElement('div');
-    wrap.className = 'fixed top-3 left-1/2 -translate-x-1/2 z-40 pointer-events-none';
-    el = document.createElement('div');
-    el.id = 'pillHorario';
-    el.className = 'pointer-events-auto px-4 py-1.5 rounded-full text-sm font-bold tracking-wide shadow-lg border backdrop-blur-md hidden';
-    wrap.appendChild(el);
-    document.body.appendChild(wrap);
-    try { DOM.pillHorario = el; } catch (_) {}
-  }
+  // Usamos el espacio del header (entre logo y título)
+  const el = document.getElementById('statusHeader');
+  if (!el) return;
 
-  const hoy = openingTextTodayLocal(userLocale); // "Hoy: 9:00–21:00" en zona local
+  const hoy = openingTextTodayLocal(userLocale);
   const abierto = ops.open === true;
 
-  // Contenido rico (ping rojo cuando está cerrado)
+  // 1) Clases base NEUTRALES (sin color)
+  el.className = 'mt-1 text-base sm:text-lg inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full border shadow-sm';
+
+  // 2) Contenido (punto con ping + texto con pulso)
   el.innerHTML = abierto
-    ? `✅ <span class="ml-1">ABIERTO</span> · <span class="opacity-90">${hoy}</span>`
+    ? `<span class="relative mr-1 inline-flex items-center">
+         <span class="absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+         <span class="relative inline-flex h-3 w-3 rounded-full bg-emerald-600"></span>
+       </span>
+       <span class="ml-1">ABIERTO</span> · <span class="opacity-90 animate-pulse">${hoy}</span>`
     : `<span class="relative mr-1 inline-flex items-center">
          <span class="absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75 animate-ping"></span>
          <span class="relative inline-flex h-3 w-3 rounded-full bg-red-600"></span>
        </span>
-       <span class="ml-1">CERRADO</span> · <span class="opacity-90">${hoy}</span>`;
+       <span class="ml-1">CERRADO</span> · <span class="opacity-90 animate-pulse">${hoy}</span>`;
 
-  el.classList.remove('hidden');
-
-  // Reset de colores
-  el.classList.remove(
-    'bg-emerald-600','text-white','border-emerald-700','shadow-emerald-200/50',
-    'bg-red-600','border-red-700','shadow-red-200/50','animate-pulse',
-    'bg-gray-800','border-gray-700/70','text-white'
-  );
-
+  // 3) Colores por estado (semi-transparente + borde del mismo color)
   if (abierto) {
-    // Abierto (verde fuerte)
-    el.classList.add('bg-emerald-600','text-white','border-emerald-700','shadow-lg');
+    el.classList.add(
+      'bg-emerald-600/30',   // fondo verde translúcido
+      'border-emerald-700',  // borde verde oscuro
+      'text-emerald-900',    // texto verde oscuro en claro
+      'dark:text-white'      // texto blanco en oscuro
+    );
   } else {
-    // Cerrado (rojo fuerte + pequeño pulso)
-    el.classList.add('bg-red-600','text-white','border-red-700','shadow-lg','animate-pulse');
+    el.classList.add(
+      'bg-red-600/30',       // fondo rojo translúcido
+      'border-red-700',      // borde rojo oscuro
+      'text-red-900',        // texto rojo oscuro en claro
+      'dark:text-white',     // texto blanco en oscuro
+      'animate-pulse'        // leve pulso de la pastilla en cerrado
+    );
   }
 }
-
 
 function updateWhatsButton(){
   if (!DOM.btnWhats) return;
@@ -70,7 +114,6 @@ function updateWhatsButton(){
   DOM.btnWhats.classList.toggle('cursor-not-allowed', !allow);
   DOM.btnWhats.textContent = allow ? 'Ir a WhatsApp' : 'Cerrado / Solo referencia';
 }
-
 
 function setModoButtonsEnabled(enabled) {
   [DOM.btnEnviar, DOM.btnLlegar].forEach(b => {
@@ -108,10 +151,21 @@ function actualizarTextosUI() {
   const { btnEnviar: tEnviar, btnLlegar: tLlegar } = textosSegunPaises();
   DOM.btnEnviar.textContent = tEnviar;
   DOM.btnLlegar.textContent = tLlegar;
+
   const o = obtenerPais(origenSeleccionado);
   const d = obtenerPais(destinoSeleccionado);
   if (o && d) {
-    DOM.subtituloHeader.textContent = `De ${o.nombre} (${o.moneda}) a ${d.nombre} (${d.moneda})`;
+    // Texto corto y responsivo
+    const isSmall = window.innerWidth < 420; // móviles muy angostos
+    const subt = isSmall
+      ? `${o.codigo} → ${d.codigo}`
+      : `${o.nombre} (${o.codigo}) → ${d.nombre} (${d.codigo})`;
+    DOM.subtituloHeader.textContent = subt;
+
+    // Estilo más discreto (tamaño fluido)
+    DOM.subtituloHeader.className =
+      "transition-colors duration-500 text-[clamp(0.9rem,2.2vw,1rem)] " +
+      "text-[#666666] dark:text-gray-300 text-center -mt-1";
   }
 }
 
@@ -150,21 +204,62 @@ function rangoPermitidoEnInput() {
 function updateAyudaRangos() {
   const o = obtenerPais(origenSeleccionado);
   const d = obtenerPais(destinoSeleccionado);
+
+  // Estilo compacto del bloque (1 sola vez)
+  DOM.ayudaMonto.className =
+    "text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center leading-snug";
+
+  // Sin modo o sin datos: limpia y sale
+  if (!mode) { DOM.ayudaMonto.innerHTML = ""; return; }
+
+  // Mensajes de “cargando” cuando falten tasas
+  if (mode === "enviar" && !tasaCompraUSD) {
+    DOM.ayudaMonto.innerHTML = `<span class="block">Calculando límites…</span>`;
+    return;
+  }
+  if (mode === "llegar" && (!tasaCompraUSD || !tasa)) {
+    DOM.ayudaMonto.innerHTML = `<span class="block">Esperando tasa para calcular límites…</span>`;
+    return;
+  }
+
+  // Rango permitido calculado
+  const rango = rangoPermitidoEnInput();
+  if (!rango) { DOM.ayudaMonto.innerHTML = ""; return; }
+
+  // Formateadores
+  const nf2 = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 2 });
+  const minFmt = nf2.format(Math.max(0, rango.min));
+  const maxFmt = nf2.format(Math.max(rango.min, rango.max));
   const codigoInput = mode === "llegar" ? (d?.codigo ?? "") : (o?.codigo ?? "");
-  if (!mode) { DOM.ayudaMonto.textContent = ""; return; }
-  if (mode === "enviar" && !tasaCompraUSD) { DOM.ayudaMonto.textContent = "Calculando límites..."; return; }
-  if (mode === "llegar" && (!tasaCompraUSD || !tasa)) { DOM.ayudaMonto.textContent = "Esperando tasa para calcular límites..."; return; }
-  const rango = rangoPermitidoEnInput(); if (!rango) { DOM.ayudaMonto.textContent = ""; return; }
-  const nf = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 2 });
-  const minFmt = nf.format(Math.max(0, rango.min));
-  const maxFmt = nf.format(Math.max(rango.min, rango.max));
-  const base = `Mínimo: ${minFmt} ${codigoInput} • Máximo: ${maxFmt} ${codigoInput}`;
-  const ref = (!ops.allowWhats) ? `\n⚠️ Modo referencia: la tasa no está vigente. ${openingTextTodayLocal(userLocale)}` : '';
-  DOM.ayudaMonto.textContent = base + ref;
+
+  // Texto de hoy en zona local del usuario
+  const hoy = openingTextTodayLocal(userLocale);
+
+  // Armar líneas compactas
+  const lineaRango = `Min: <strong>${minFmt} ${codigoInput}</strong> • Max: <strong>${maxFmt} ${codigoInput}</strong>`;
+  const lineaRef   = (!ops.allowWhats) ? `⚠ Modo referencia — tasa no vigente` : "";
+  const lineaHoy   = `🕒 ${hoy.replace("Horario de Hoy: ", "")}`;
+
+  // Render (máx 3 líneas, cada una en su bloque para que corte bien en móviles)
+  DOM.ayudaMonto.innerHTML = `
+    <span class="block">${lineaRango}</span>
+    ${lineaRef ? `<span class="block">${lineaRef}</span>` : ``}
+    <span class="block">${lineaHoy}</span>
+  `;
 }
 
 function validarMontoEnVivo() {
-  const raw = DOM.inputMonto.value.trim();
+  
+  let raw = DOM.inputMonto.value.trim();
+
+// Prevenir múltiples ceros a la izquierda
+if (/^0\d+/.test(raw)) {
+  raw = raw.replace(/^0+(?!\.)/, ""); // solo deja 0 si es un decimal válido
+  DOM.inputMonto.value = raw;  // actualiza el campo en vivo
+}
+
+const monto = parseFloat(raw.replace(",", ".")); // sigue normal
+
   updateAyudaRangos();
   if (!raw) { DOM.btnCalcular.disabled = true; setInputStyle({ state: "neutral" }); return; }
   const num = parseFloat(raw);
@@ -188,10 +283,8 @@ function validarMontoEnVivo() {
     setInputStyle({ state: "error", msg: `El máximo equivalente es ${CONFIG.MAX_USD} USD (ahora llevas ~${usd.toFixed(2)} USD).` });
     return;
   }
-  if (usd >= 300 && !DOM.ayudaMonto.textContent.includes("se envían en varias partes")) {
-    const extra = "ℹ️ Montos mayores a 300 USD se envían en varias partes.";
-    DOM.ayudaMonto.textContent = DOM.ayudaMonto.textContent ? `${DOM.ayudaMonto.textContent}\n${extra}` : extra;
-  }
+  
+  
   DOM.btnCalcular.disabled = false;
   setInputStyle({ state: "ok" });
 }
@@ -218,6 +311,7 @@ function ocultarTodo() {
 }
 
 export function mostrarPaso1() {
+  showBack(false);
   ocultarTodo();
   actualizarHeader("Selecciona el país de origen");
   DOM.btnVolverGlobal.classList.add("hidden");
@@ -227,13 +321,17 @@ export function mostrarPaso1() {
   paisesDisponibles.forEach(p => {
     const btn = document.createElement("button");
     btn.textContent = `${p.emoji} ${p.nombre}`;
-    btn.className = "ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105";
+    btn.className = "ripple-button border rounded-xl px-6 py-3 font-semibold shadow transition hover:scale-105 " +
+  "bg-white/80 text-[#0066FF] border-[#0066FF]/50 " +
+  "dark:bg-white/10 dark:text-[#9cc2ff] dark:border-[#66a3ff]/40 " +
+  "backdrop-blur-sm dark:hover:bg-white/15";
     btn.onclick = () => { origenSeleccionado = p.codigo; mostrarPaso2(); };
     DOM.origenBtns.appendChild(btn);
-    });
+  });
 }
 
 function mostrarPaso2() {
+  showBack(true);
   ocultarTodo();
   actualizarHeader("Selecciona el país destino");
   DOM.btnVolverGlobal.classList.remove("hidden");
@@ -243,13 +341,17 @@ function mostrarPaso2() {
   paisesDisponibles.filter(p => p.codigo !== origenSeleccionado).forEach(p => {
     const btn = document.createElement("button");
     btn.textContent = `${p.emoji} ${p.nombre}`;
-    btn.className = "ripple-button bg-white dark:bg-gray-100 border border-[#0066FF] text-[#0066FF] font-semibold px-6 py-3 rounded-xl shadow transition hover:scale-105";
+    btn.className = "ripple-button border rounded-xl px-6 py-3 font-semibold shadow transition hover:scale-105 " +
+  "bg-white/80 text-[#0066FF] border-[#0066FF]/50 " +
+  "dark:bg-white/10 dark:text-[#9cc2ff] dark:border-[#66a3ff]/40 " +
+  "backdrop-blur-sm dark:hover:bg-white/15";
     btn.onclick = () => { destinoSeleccionado = p.codigo; DOM.step2Destino.classList.add("hidden"); mostrarPaso3(); };
     DOM.destinoBtns.appendChild(btn);
   });
 }
 
 async function mostrarPaso3() {
+  showBack(true);
   ocultarTodo();
   DOM.step1.classList.remove("hidden");
   DOM.btnVolverGlobal.classList.remove("hidden");
@@ -276,17 +378,17 @@ async function mostrarPaso3() {
   if (tieneTasa) {
     tasa = tNum;
     DOM.tasaValue.textContent = formatearTasa(tasa);
-    DOM.tasaFechaEl.textContent = formatearFecha(fecha);
+    DOM.tasaFecha.textContent = formatearFecha(fecha);
 
-   if (ops.fresh) {
-    hideBanner(DOM.tasaAdvertencia);
-    DOM.tasaConfirmacionTexto.textContent = "✅ Tasa actualizada";
-    mostrarConfirmacionVerdeAutoOcultar(DOM.tasaConfirmacion, 4000);
-  } else {
-    hideBanner(DOM.tasaConfirmacion);
-    DOM.tasaAdvertenciaTexto.textContent = "Tasa desactualizada";
-    showBanner(DOM.tasaAdvertencia);
-  }
+    if (ops.fresh) {
+      hideBanner(DOM.tasaAdvertencia);
+      DOM.tasaConfirmacionTexto.textContent = "✅ Tasa actualizada";
+      mostrarConfirmacionVerdeAutoOcultar(DOM.tasaConfirmacion, 4000);
+    } else {
+      hideBanner(DOM.tasaConfirmacion);
+      DOM.tasaAdvertenciaTexto.textContent = "Tasa desactualizada";
+      showBanner(DOM.tasaAdvertencia);
+    }
 
     // Ahora SIEMPRE dejamos elegir modo (aunque sea referencia)
     setModoButtonsEnabled(true);
@@ -301,17 +403,17 @@ async function mostrarPaso3() {
     tasa = null;
     setModoButtonsEnabled(false);
     DOM.tasaValue.textContent = "⚠️ No disponible";
-    DOM.tasaFechaEl.textContent = "—";
+    DOM.tasaFecha.textContent = "—";
     hideBanner(DOM.tasaConfirmacion);
     DOM.tasaAdvertenciaTexto.textContent = "No hay tasa disponible";
 
     setTimeout(() => {
-  DOM.loader.classList.add("hidden");
-  DOM.resultado.classList.remove("hidden");
-  DOM.resultado.classList.add("fade-scale-in");
-  DOM.resText.classList.add("text-4xl");
-  updateHorarioPill(); // mantiene el pill al día
-}, 1200);
+      DOM.loader.classList.add("hidden");
+      DOM.resultado.classList.remove("hidden");
+      DOM.resultado.classList.add("fade-scale-in");
+      DOM.resText.classList.add("text-4xl");
+      updateHorarioPill(); // mantiene el pill al día
+    }, 1200);
 
     showBanner(DOM.tasaAdvertencia);
     updateAyudaRangos();
@@ -338,6 +440,103 @@ function cambiarPaso(tipo) {
   DOM.step2.classList.remove("hidden");
   setTimeout(() => { DOM.inputMonto.focus(); validarMontoEnVivo(); }, 300);
 }
+function ejecutarCalculo() {
+  const raw = DOM.inputMonto.value.trim();
+  const monto = parseFloat(raw);
+  const t = parseFloat(tasa);
+  if (isNaN(monto)) {
+    DOM.errorMonto.textContent = "⚠️ Ingresa un número válido";
+    DOM.errorMonto.classList.remove("hidden");
+    return;
+  }
+  if (isNaN(t) || t <= 0) {
+    DOM.errorMonto.textContent = "⚠️ Tasa No Disponible.";
+    DOM.errorMonto.classList.remove("hidden");
+    return;
+  }
+  if (!tasaCompraUSD) {
+    DOM.errorMonto.textContent = "⚠️ No se pudo obtener la tasa de compra en USD.";
+    DOM.errorMonto.classList.remove("hidden");
+    return;
+  }
+
+  const montoEnPesos = mode === "enviar"
+    ? monto
+    : calcularCruce(origenSeleccionado, destinoSeleccionado, mode, monto, t);
+  const usd = montoEnPesos / tasaCompraUSD;
+
+  if (usd < CONFIG.MIN_USD) {
+    DOM.errorMonto.textContent = `⚠️ El monto mínimo permitido es equivalente a ${CONFIG.MIN_USD} USD`;
+    DOM.errorMonto.classList.remove("hidden");
+    return;
+  }
+
+  if (usd > CONFIG.MAX_USD) {
+    DOM.errorMonto.textContent = `⚠️ El monto máximo permitido es equivalente a ${CONFIG.MAX_USD} USD`;
+    DOM.errorMonto.classList.remove("hidden");
+    return;
+  }
+
+  if (!ops.allowWhats) {
+    mostrarToast(DOM, "⚠️ Modo referencia: valores orientativos.");
+  }
+
+  DOM.errorMonto.classList.add("hidden");
+
+  const o = obtenerPais(origenSeleccionado);
+  const d = obtenerPais(destinoSeleccionado);
+  const calc = Math.round(calcularCruce(origenSeleccionado, destinoSeleccionado, mode, monto, t));
+  const calcRed = mode === "llegar" ? redondearPorMoneda(calc, o.codigo) : calc;
+
+  const fecha = DOM.tasaFecha.textContent;
+  const montoFmt = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 2 }).format(monto);
+  const calcFmt = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 0 }).format(calcRed);
+  const tasaFmt = formatearTasa(tasa);
+
+  lastCalc = {
+    mode,
+    origen: o,
+    destino: d,
+    montoIngresado: monto,
+    montoCalculado: calcRed,
+    tasa: t,
+    fecha
+  };
+
+  const refBadge = !ops.allowWhats
+    ? `<div class="mt-2 inline-block text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded px-2 py-1">MODO REFERENCIA</div>`
+    : ``;
+
+  const mensaje = mode === "enviar"
+    ? `<div class="text-sm italic text-gray-500 dark:text-gray-400">Enviando desde ${o.nombre}</div>
+       <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">$${montoFmt} ${o.codigo}</div>
+       <div class="text-base text-gray-600 dark:text-gray-300 mt-1">recibirás</div>
+       <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">${d.codigo} ${calcFmt}</div>
+       ${refBadge}
+       <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">Calculado con la tasa del día ${fecha} — <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span></div>`
+    : `<div class="text-sm italic text-gray-500 dark:text-gray-400">Para recibir en ${d.nombre}</div>
+       <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">${d.codigo} ${montoFmt}</div>
+       <div class="text-base text-gray-600 dark:text-gray-300 mt-1">debes enviar</div>
+       <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">$${calcFmt} ${o.codigo}</div>
+       ${refBadge}
+       <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">Calculado con la tasa del día ${fecha} — <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span></div>`;
+
+  DOM.resText.innerHTML = mensaje;
+  if (ops.allowWhats && !DOM.soundSuccess.muted) DOM.soundSuccess.play();
+
+  DOM.step2.classList.add("hidden");
+  DOM.tasaWrap.classList.add("transition", "duration-500", "ease-out", "opacity-0", "scale-95");
+  setTimeout(() => DOM.tasaWrap.classList.add("hidden"), 500);
+
+  DOM.loader.classList.remove("hidden");
+  setTimeout(() => {
+    DOM.loader.classList.add("hidden");
+    DOM.resultado.classList.remove("hidden");
+    DOM.resultado.classList.add("fade-scale-in");
+    DOM.resText.classList.add("text-4xl");
+    updateWhatsButton();
+  }, 1200);
+}
 
 export function wireEvents() {
   (() => {
@@ -353,23 +552,47 @@ export function wireEvents() {
   DOM.btnEnviar.onclick = () => cambiarPaso("enviar");
   DOM.btnLlegar.onclick = () => cambiarPaso("llegar");
 
-  DOM.btnVolverGlobal.onclick = () => {
-    if (!DOM.step2.classList.contains("hidden")) {
+  // Handler ÚNICO del botón Volver (sin duplicados)
+    DOM.btnVolverGlobal.onclick = () => {
+    const isStep1Visible = !DOM.step1.classList.contains("hidden");
+    const isStep2Visible = !DOM.step2.classList.contains("hidden");
+    const isResultadoVisible = !DOM.resultado.classList.contains("hidden");
+
+    if (isResultadoVisible) {
       DOM.resultado.classList.add("hidden");
+      DOM.resultado.classList.remove("fade-scale-in");
+
+      DOM.step2.classList.remove("hidden");
+      DOM.tasaWrap.classList.remove("hidden", "opacity-0", "scale-95");
+
+      actualizarHeader("Ingresa el monto");
+      setTimeout(() => {
+        DOM.inputMonto.focus();
+        validarMontoEnVivo();
+      }, 200);
+      return;
+    }
+
+    if (isStep2Visible) {
       DOM.step2.classList.add("hidden");
       DOM.step1.classList.remove("hidden");
       actualizarHeader("Selecciona el tipo de operación");
-    } else if (!DOM.step1.classList.contains("hidden")) {
-      mostrarPaso2();
-    } else {
-      mostrarPaso1();
+      return;
     }
+
+    if (isStep1Visible) {
+      mostrarPaso2();
+      return;
+    }
+
+    mostrarPaso1();
   };
 
+  // Autoscroll input al abrir teclado (centrado)
   let scrollPrev = 0;
   DOM.inputMonto.addEventListener("focus", () => {
     scrollPrev = window.scrollY;
-    setTimeout(() => DOM.inputMonto.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+    setTimeout(() => DOM.inputMonto.scrollIntoView({ behavior: "smooth", block: "center" }), 380);
     updateAyudaRangos();
   });
   DOM.inputMonto.addEventListener("blur", () => {
@@ -395,65 +618,19 @@ export function wireEvents() {
   });
 
   DOM.btnCalcular.onclick = () => {
-    const raw = DOM.inputMonto.value.trim();
-    const monto = parseFloat(raw);
-    const t = parseFloat(tasa);
-    if (isNaN(monto)) { DOM.errorMonto.textContent = "⚠️ Ingresa un número válido"; DOM.errorMonto.classList.remove("hidden"); return; }
-    if (isNaN(t) || t <= 0) { DOM.errorMonto.textContent = "⚠️ Tasa No Disponible."; DOM.errorMonto.classList.remove("hidden"); return; }
-    if (!tasaCompraUSD) { DOM.errorMonto.textContent = "⚠️ No se pudo obtener la tasa de compra en USD."; DOM.errorMonto.classList.remove("hidden"); return; }
+  const raw = DOM.inputMonto.value.trim();
+  const monto = parseFloat(raw);
+  const montoEnPesos = mode === "enviar" ? monto : calcularCruce(origenSeleccionado, destinoSeleccionado, mode, monto, tasa);
+  const usd = montoEnPesos / tasaCompraUSD;
 
-    const montoEnPesos = mode === "enviar" ? monto : calcularCruce(origenSeleccionado, destinoSeleccionado, mode, monto, t);
-    const usd = montoEnPesos / tasaCompraUSD;
-    if (usd < CONFIG.MIN_USD) { DOM.errorMonto.textContent = `⚠️ El monto mínimo permitido es equivalente a ${CONFIG.MIN_USD} USD`; DOM.errorMonto.classList.remove("hidden"); return; }
-    if (usd > CONFIG.MAX_USD) { DOM.errorMonto.textContent = `⚠️ El monto máximo permitido es equivalente a ${CONFIG.MAX_USD} USD`; DOM.errorMonto.classList.remove("hidden"); return; }
-    if (!ops.allowWhats) { mostrarToast(DOM, "⚠️ Modo referencia: valores orientativos."); }
-    DOM.errorMonto.classList.add("hidden");
+  if (usd >= 300 && !document.body.classList.contains("modal-activo")) {
+    mostrarModalMontoGrande(() => ejecutarCalculo());
+    return;
+  }
 
-    const o = obtenerPais(origenSeleccionado), d = obtenerPais(destinoSeleccionado);
-    const calc = Math.round(calcularCruce(origenSeleccionado, destinoSeleccionado, mode, monto, t));
-    const calcRed = mode === "llegar" ? redondearPorMoneda(calc, o.codigo) : calc;
+  ejecutarCalculo();
+};
 
-    const fecha = DOM.tasaFechaEl.textContent;
-    const montoFmt = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 2 }).format(monto);
-    const calcFmt = new Intl.NumberFormat(userLocale, { maximumFractionDigits: 0 }).format(calcRed);
-    const tasaFmt = formatearTasa(tasa);
-
-    lastCalc = { mode, origen: o, destino: d, montoIngresado: monto, montoCalculado: calcRed, tasa: t, fecha };
-
-    const refBadge = (!ops.allowWhats)
-      ? `<div class="mt-2 inline-block text-xs font-bold text-red-700 bg-red-100 border border-red-300 rounded px-2 py-1">MODO REFERENCIA</div>`
-      : ``;
-
-    const mensaje = mode === "enviar"
-      ? `<div class="text-sm italic text-gray-500 dark:text-gray-400">Enviando desde ${o.nombre}</div>
-         <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">$${montoFmt} ${o.codigo}</div>
-         <div class="text-base text-gray-600 dark:text-gray-300 mt-1">recibirás</div>
-         <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">${d.codigo} ${calcFmt}</div>
-         ${refBadge}
-         <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">Calculado con la tasa del día ${fecha} — <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span></div>`
-      : `<div class="text-sm italic text-gray-500 dark:text-gray-400">Para recibir en ${d.nombre}</div>
-         <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">${d.codigo} ${montoFmt}</div>
-         <div class="text-base text-gray-600 dark:text-gray-300 mt-1">debes enviar</div>
-         <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">$${calcFmt} ${o.codigo}</div>
-         ${refBadge}
-         <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">Calculado con la tasa del día ${fecha} — <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span></div>`;
-
-    DOM.resText.innerHTML = mensaje;
-    if (ops.allowWhats && !DOM.soundSuccess.muted) DOM.soundSuccess.play();
-
-    DOM.step2.classList.add("hidden");
-    DOM.tasaWrap.classList.add("transition", "duration-500", "ease-out", "opacity-0", "scale-95");
-    setTimeout(() => DOM.tasaWrap.classList.add("hidden"), 500);
-
-    DOM.loader.classList.remove("hidden");
-    setTimeout(() => {
-      DOM.loader.classList.add("hidden");
-      DOM.resultado.classList.remove("hidden");
-      DOM.resultado.classList.add("fade-scale-in");
-      DOM.resText.classList.add("text-4xl");
-      updateWhatsButton();
-    }, 1200);
-  };
 
   DOM.btnRecalcular.onclick = () => {
     resetearCampoMonto();
