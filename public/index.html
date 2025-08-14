@@ -125,6 +125,13 @@ body.modal-activo *:not(#modalMontoGrande):not(#modalMontoGrande *) {
   z-index: 9999 !important;
 }
 
+@media (max-width: 480px) {
+  #btnVolverGlobal {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
   </style>
 </head>
 
@@ -320,13 +327,16 @@ body.modal-activo *:not(#modalMontoGrande):not(#modalMontoGrande *) {
         </div>
       </section>
 
-     <button id="btnVolverGlobal"
-        class="fixed-bottom hidden inline-flex items-center gap-2 px-4 py-2 rounded-xl border
-               border-gray-300/70 dark:border-gray-600/60
-               bg-white/60 dark:bg-gray-700/50
-               text-gray-800 dark:text-white
-               backdrop-blur-sm shadow-sm"
-        type="button">← Volver</button>
+     <div class="w-full -mt-1 mb-2 items-center">
+  <button id="btnVolverGlobal"
+          class="hidden inline-flex items-center gap-2 px-4 py-2 rounded-xl border
+                 border-gray-300/70 dark:border-gray-600/60
+                 bg-white/60 dark:bg-gray-700/50
+                 text-gray-800 dark:text-white
+                 backdrop-blur-sm shadow-sm"
+          type="button">← Volver</button>
+</div>
+
 
 
       <section id="calculando"
