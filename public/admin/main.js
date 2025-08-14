@@ -34,9 +34,11 @@ let timerAdvertencia = null;
 // -------------------------
 function formatearTasa(v) {
   if (typeof v !== "number" || !Number.isFinite(v)) return "-";
-  if (v >= 1) return v.toFixed(1);
+  if (v >= 10) return v.toFixed(1);
+  if (v >= 1) return v.toFixed(2);
   if (v >= 0.01) return v.toFixed(3);
-  if (v >= 0.00099) return v.toFixed(5);
+  if (v >= 0.001) return v.toFixed(4);
+  if (v >= 0.0001) return v.toFixed(5);
   return v.toFixed(6);
 }
 function iconoCambio(n, p) {
