@@ -77,5 +77,5 @@ export function openingTextTodayLocal(locale = navigator.language || 'es-ES') {
   const endUTC   = mkUtc(sch.end);
 
   const fmt = new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' });
-  return `Horario de Hoy: ${fmt.format(startUTC)}–${fmt.format(endUTC)}`;
+  return `Horario de: ${fmt.format(startUTC)}–${fmt.format(endUTC)}`;
 }

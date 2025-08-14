@@ -76,16 +76,24 @@ function updateHorarioPill() {
 
   // 2) Contenido (punto con ping + texto con pulso)
   el.innerHTML = abierto
-    ? `<span class="relative mr-1 inline-flex items-center">
-         <span class="absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
-         <span class="relative inline-flex h-3 w-3 rounded-full bg-emerald-600"></span>
+  ? `<div class="flex flex-col items-center text-center">
+       <span class="flex items-center gap-1 font-bold text-emerald-900 dark:text-white">
+         <span class="relative inline-flex h-3 w-3 rounded-full bg-emerald-600">
+           <span class="absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 opacity-75 animate-ping"></span>
+         </span>
+         ABIERTO
        </span>
-       <span class="ml-1">ABIERTO</span> · <span class="opacity-90 animate-pulse">${hoy}</span>`
-    : `<span class="relative mr-1 inline-flex items-center">
-         <span class="absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75 animate-ping"></span>
-         <span class="relative inline-flex h-3 w-3 rounded-full bg-red-600"></span>
+       <span class="text-sm opacity-90 animate-pulse">${hoy}</span>
+     </div>`
+  : `<div class="flex flex-col items-center text-center">
+       <span class="flex items-center gap-1 font-bold text-red-900 dark:text-white">
+         <span class="relative inline-flex h-3 w-3 rounded-full bg-red-600">
+           <span class="absolute inline-flex h-3 w-3 rounded-full bg-red-400 opacity-75 animate-ping"></span>
+         </span>
+         CERRADO
        </span>
-       <span class="ml-1">CERRADO</span> · <span class="opacity-90 animate-pulse">${hoy}</span>`;
+       <span class="text-sm opacity-90 animate-pulse">${hoy}</span>
+     </div>`;
 
   // 3) Colores por estado (semi-transparente + borde del mismo color)
   if (abierto) {
@@ -238,7 +246,7 @@ function updateAyudaRangos() {
   // Armar líneas compactas
   const lineaRango = `Min: <strong>${minFmt} ${codigoInput}</strong> • Max: <strong>${maxFmt} ${codigoInput}</strong>`;
   const lineaRef   = (!ops.allowWhats) ? `⚠ Modo referencia — tasa no vigente` : "";
-  const lineaHoy   = `🕒 ${hoy.replace("Horario de Hoy: ", "")}`;
+  const lineaHoy   = `🕒 ${hoy.replace("Horario de: ", "")}`;
 
   // Render (máx 3 líneas, cada una en su bloque para que corte bien en móviles)
   DOM.ayudaMonto.innerHTML = `
