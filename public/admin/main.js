@@ -33,14 +33,16 @@ let timerAdvertencia = null;
 // Utilidades
 // -------------------------
 function formatearTasa(v) {
-  if (typeof v !== "number" || !Number.isFinite(v)) return "-";
-  if (v >= 10) return v.toFixed(1);
-  if (v >= 1) return v.toFixed(2);
-  if (v >= 0.01) return v.toFixed(3);
-  if (v >= 0.001) return v.toFixed(4);
-  if (v >= 0.0001) return v.toFixed(5);
-  return v.toFixed(6);
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  if (n >= 10) return +n.toFixed(1);
+  if (n >= 1) return +n.toFixed(2);
+  if (n >= 0.01) return +n.toFixed(3);
+  if (n >= 0.001) return +n.toFixed(4);
+  if (n >= 0.00099) return +n.toFixed(5);
+  return +n.toFixed(6);
 }
+
 function iconoCambio(n, p) {
   if (p == null || !Number.isFinite(p)) return "⏺";
   if (n > p) return "🔼";
@@ -308,7 +310,7 @@ function escribirCruces() {
           ? (1 + ajuste / 100)
           : (1 - ajuste / 100);
 
-      const tasaFinal = parseFloat((tasaBase * factor).toFixed(6));
+      const tasaFinal = parseFloat((tasaBase * factor).toFixed(8));
 
       const clave = `${origen}-${destino}`;
       const anterior = crucesAnteriores[clave];
