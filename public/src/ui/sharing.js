@@ -38,8 +38,8 @@ export function initSharing(DOM, getLastCalc, getOpsState = () => ({ allowWhats:
     const calFmt = montoCalculado.toLocaleString("es-ES");
     const texto = "📦 Transferencia calculada con ByteTransfer\n\n" +
       (mode === "enviar"
-        ? `💰 Monto a enviar: $${inFmt} ${origen.codigo} desde ${origen.nombre}\n📥 Monto a recibir: ${destino.codigo} ${calFmt} en ${destino.nombre}`
-        : `📥 Monto a recibir: ${destino.codigo} ${inFmt} en ${destino.nombre}\n💰 Monto a enviar: $${calFmt} ${origen.codigo} desde ${origen.nombre}`) +
+        ? `💰 Monto a enviar: ${inFmt} ${origen.codigo} desde ${origen.nombre}\n📥 Monto a recibir: ${destino.codigo} ${calFmt} en ${destino.nombre}`
+        : `📥 Monto a recibir: ${destino.codigo} ${inFmt} en ${destino.nombre}\n💰 Monto a enviar: ${calFmt} ${origen.codigo} desde ${origen.nombre}`) +
       `\n💱 Tasa del día: ${tasaFmt}\n📅 Fecha: ${fecha}\n` +
       (!getOpsState().allowWhats ? "\n⚠️ Modo referencia: la tasa no está vigente. Valores orientativos." : "");
 
