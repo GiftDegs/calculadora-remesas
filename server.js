@@ -24,8 +24,10 @@ app.use(express.static(path.join(__dirname, "public")));
 function formatearTasa(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return null;
-  if (n >= 1) return +n.toFixed(1);
+  if (n >= 10) return +n.toFixed(1);
+  if (n >= 1) return +n.toFixed(2);
   if (n >= 0.01) return +n.toFixed(3);
+  if (n >= 0.001) return +n.toFixed(4);
   if (n >= 0.00099) return +n.toFixed(5);
   return +n.toFixed(6);
 }

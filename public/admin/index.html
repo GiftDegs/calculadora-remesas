@@ -1,147 +1,137 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tasas por Cruce</title>
+    <title>Panel de Tasas</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: '#6366f1',
+              bgLight: '#f9fafb',
+              bgDark: '#0f172a',
+            },
+          },
+        },
+      };
+    </script>
     <script src="/admin/main.js" defer></script>
-    <style>
-      button[title] {
-        position: relative;
-      }
-      button[title]:hover::after {
-        content: attr(title);
-        position: absolute;
-        bottom: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: rgba(0,0,0,0.8);
-        color: #fff;
-        padding: 4px 8px;
-        font-size: 0.75rem;
-        border-radius: 4px;
-        white-space: nowrap;
-        pointer-events: none;
-        opacity: 1;
-        transition: opacity 0.2s ease-in-out;
-        z-index: 10;
-      }
-      button[title]:not(:hover)::after {
-        opacity: 0;
-      }
-    </style>
   </head>
-  <body class="bg-gray-50 text-gray-900 p-6">
 
-    <!-- Loader principal -->
-    <div id="loader" class="fixed inset-0 flex items-center justify-center z-50 bg-white bg-opacity-80 backdrop-blur-sm">
+  <body class="bg-bgLight dark:bg-bgDark text-gray-900 dark:text-gray-100 transition-colors duration-300 p-6">
+
+    <!-- Loader -->
+    <div id="loader" class="fixed inset-0 flex items-center justify-center z-50 bg-white dark:bg-black bg-opacity-80 backdrop-blur">
       <div class="flex items-center space-x-3">
-        <svg class="animate-spin h-5 w-5 text-blue-600" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+        <svg class="animate-spin h-6 w-6 text-primary" viewBox="0 0 24 24" fill="none">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
         </svg>
-        <span class="text-gray-800 text-sm">⏳ Cargando datos...</span>
+        <span class="text-sm">⏳ Cargando datos...</span>
       </div>
     </div>
 
-    <div class="max-w-5xl mx-auto">
-      <h1 class="text-3xl font-bold mb-6">📊 Panel de Tasas por País</h1>
+    <div class="max-w-6xl mx-auto">
+      <h1 class="text-3xl font-extrabold mb-6">📊 Panel de Tasas por País</h1>
 
-      <div id="ultima-actualizacion" class="text-sm text-gray-600 mb-4"></div>
+      <div id="ultima-actualizacion" class="text-sm text-gray-500 mb-4"></div>
 
-      <div id="advertencia-pendiente" class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-6 rounded hidden">
-        ⚠️ <strong>Importante:</strong> Se han actualizado los precios o ajustes. Debes presionar <strong>💾 Guardar Ajustes</strong> para aplicar las nuevas tasas.
+      <div id="advertencia-pendiente" class="bg-yellow-200 dark:bg-yellow-800 text-yellow-900 dark:text-yellow-100 border-l-4 border-yellow-500 p-4 mb-6 rounded hidden">
+        ⚠️ <strong>Importante:</strong> Se han actualizado los precios. Debes presionar <strong>💾 Guardar Ajustes</strong>.
       </div>
 
-      <!-- 🔝 Acciones principales -->
-      <div class="flex flex-wrap gap-3 items-center mb-10 border-b border-gray-300 pb-4">
-        <button id="btn-refrescar" title="Actualizar precios en tiempo real"
-          class="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-95 shadow transition">
+      <!-- Acciones -->
+      <div class="flex flex-wrap gap-3 mb-10 border-b border-gray-300 dark:border-gray-700 pb-4">
+        <button id="btn-refrescar" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded shadow">
           🔄 Actualizar Precios
         </button>
-
-        <button id="btn-toggle-edicion" title="Habilitar edición manual de tasas"
-          class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition shadow">
+        <button id="btn-toggle-edicion" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded shadow">
           ✏️ Editar Precios
         </button>
-
-        <button id="btn-aplicar-ajustes" title="Aplicar ajustes ingresados sin guardarlos"
-          class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition shadow">
+        <button id="btn-aplicar-ajustes" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded shadow">
           🔃 Aplicar Ajustes
         </button>
-
-        <button id="btn-guardar-ajustes" title="Guardar en snapshot los ajustes actuales"
-          class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition shadow">
+        <button id="btn-guardar-ajustes" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded shadow">
           💾 Guardar Ajustes
         </button>
       </div>
 
-      
+      <!-- Selector país -->
+      <div class="flex flex-wrap gap-4 mb-10 items-center">
+        <button id="btn-seleccionar-pais" class="px-4 py-2 bg-primary text-white rounded-lg shadow hover:bg-indigo-700">
+          🌐 País: <span id="pais-seleccionado">Todos</span>
+        </button>
+        <div class="flex border rounded-lg overflow-hidden shadow-sm">
+          <button id="tab-origen" class="px-4 py-2 bg-white dark:bg-gray-800 text-indigo-600 font-semibold">Origen →</button>
+          <button id="tab-destino" class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600">← Destino</button>
+        </div>
+        <button id="btn-resetear" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded shadow hover:bg-gray-400">
+          🧹 Limpiar filtros
+        </button>
+      </div>
+
       <!-- Popover País -->
-      <div id="popover-paises" class="absolute bg-white rounded-lg shadow-lg w-64 max-h-80 overflow-auto hidden z-50">
-        <ul id="lista-paises" class="divide-y divide-gray-200">
-          <li>
-            <button data-fi="" class="w-full text-left p-3 hover:bg-blue-50">Todos</button>
-          </li>
-          <!-- Items dinámicos desde JS -->
-        </ul>
+      <div id="popover-paises" class="absolute bg-white dark:bg-gray-800 rounded shadow-lg w-64 max-h-80 overflow-auto hidden z-50">
+        <ul id="lista-paises" class="divide-y divide-gray-200 dark:divide-gray-600"></ul>
       </div>
 
-      <!-- Tarjetas de precios -->
-      <div id="tarjetas-paises"
-           class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-6 mb-10">
-        <!-- Las tarjetas se inyectan aquí con renderTarjetasPaises() -->
-      </div>
+      <!-- Tarjetas -->
+      <div id="tarjetas-paises" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10"></div>
 
-      <!-- 🎛 Filtros y navegación -->
-      <div class="flex flex-wrap gap-3 items-center justify-between mb-10">
-        <div class="flex flex-wrap gap-3 items-center">
-          <button id="btn-seleccionar-pais" title="Filtrar cruces por país"
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow transition relative">
-            🌐 País: <span id="pais-seleccionado">Todos</span>
-          </button>
-
-          <div class="flex border border-gray-300 rounded-lg overflow-hidden shadow-sm">
-            <button id="tab-origen"
-              class="px-4 py-2 bg-white text-blue-600 font-semibold hover:bg-gray-100 transition w-32">Origen →</button>
-            <button id="tab-destino"
-              class="px-4 py-2 bg-gray-100 text-gray-600 hover:bg-white transition w-32">← Destino</button>
-          </div>
-
-          <button id="btn-resetear" title="Quitar filtro actual"
-            class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition shadow">
-            🧹 Limpiar filtros
-          </button>
-        </div>
-        </div>
-
-      <!-- Cruces -->
-      <h2 class="text-2xl font-semibold mb-4">💱 Tasas de Cruce</h2>
-      <div class="space-y-4 mb-8">
-        <div id="cruce-encabezado" class="text-xl font-bold text-gray-700"></div>
-        <div id="cruces-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-5"></div>
+      <h2 class="text-2xl font-bold mb-4">💱 Tasas de Cruce</h2>
+      <div class="space-y-4 mb-20">
+        <div id="cruce-encabezado" class="text-lg font-semibold"></div>
+        <div id="cruces-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
       </div>
     </div>
 
-    <!-- Modal de confirmación -->
+    <!-- Modal confirmación -->
     <div id="modal-confirmacion" class="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50 hidden">
-      <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center">
+      <div class="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-sm text-center">
         <h2 class="text-lg font-bold mb-2">¿Actualizar precios desde Binance?</h2>
-        <p class="text-sm text-gray-700 mb-4">Se perderán los valores manuales que hayas editado. ¿Estás seguro de continuar?</p>
-        <div class="flex justify-center gap-4 mt-4">
-          <button onclick="cerrarModalConfirmacion()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Cancelar</button>
+        <p class="text-sm text-gray-600 dark:text-gray-300">Se perderán valores manuales. ¿Confirmás?</p>
+        <div class="mt-4 flex justify-center gap-4">
+          <button onclick="cerrarModalConfirmacion()" class="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded hover:bg-gray-400">Cancelar</button>
           <button id="btn-confirmar-binance" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Sí, actualizar</button>
         </div>
       </div>
     </div>
 
-<!-- Botón flotante: Ir a la app -->
-<a href="/index.html" target="_blank"
-  class="fixed bottom-4 right-4 z-50 px-4 py-2 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition"
-  title="Abrir vista pública en nueva pestaña">
-  🚀 Ir a la app
-</a>
+    <!-- Botón flotante -->
+    <a href="/index.html" target="_blank" class="fixed bottom-4 right-4 z-50 px-4 py-2 bg-primary hover:bg-indigo-700 text-white rounded-full shadow-lg transition">
+      🚀 Ir a la app
+    </a>
+
+  <button id="modoToggle"
+  class="absolute top-4 right-4 z-50 px-3 py-2 bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-white rounded-full shadow hover:brightness-110 transition text-sm">
+  🌞 Claro
+</button>
+
+<script>
+  const btn = document.getElementById("modoToggle");
+
+  function actualizarToggle() {
+    const esOscuro = document.documentElement.classList.contains("dark");
+    btn.innerHTML = esOscuro ? "🌙 Oscuro" : "🌞 Claro";
+  }
+
+  btn.addEventListener("click", () => {
+    document.documentElement.classList.toggle("dark");
+    localStorage.setItem("modoOscuro", document.documentElement.classList.contains("dark") ? "1" : "0");
+    actualizarToggle();
+  });
+
+  // Aplicar preferencia previa
+  if (localStorage.getItem("modoOscuro") === "1") {
+    document.documentElement.classList.add("dark");
+  }
+
+  actualizarToggle();
+</script>
 
   </body>
 </html>

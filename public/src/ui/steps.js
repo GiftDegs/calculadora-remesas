@@ -546,15 +546,40 @@ function ejecutarCalculo() {
   }, 1200);
 }
 
+const btn = document.getElementById("modoToggle");
+
+function actualizarToggle() {
+  const esOscuro = document.documentElement.classList.contains("dark");
+  btn.innerHTML = esOscuro ? "🌙 Oscuro" : "🌞 Claro";
+}
+
+btn.addEventListener("click", () => {
+  const html = document.documentElement;
+  const nuevoModo = html.classList.toggle("dark") ? 'dark' : 'light';
+  localStorage.setItem('theme', nuevoModo);
+  actualizarToggle();
+});
+
+actualizarToggle();
+
 export function wireEvents() {
+  const btn = DOM.btnToggleDark;
+
+  // Si el botón no existe (por alguna razón), evitamos errores
+  if (!btn) return;
+
+  // Al cargar, actualizar texto del botón según el modo actual
   (() => {
     const isDark = document.documentElement.classList.contains("dark");
-    DOM.btnToggleDark.textContent = isDark ? "🌞 Claro" : "🌙 Oscuro";
+    btn.textContent = isDark ? "🌙 Oscuro" : "🌞 Claro";
   })();
-  DOM.btnToggleDark.addEventListener("click", () => {
-    const isDark = document.documentElement.classList.toggle("dark");
+
+  // Evento click: alternar modo y actualizar localStorage y texto
+  btn.addEventListener("click", () => {
+    const html = document.documentElement;
+    const isDark = html.classList.toggle("dark");
     localStorage.setItem("theme", isDark ? "dark" : "light");
-    DOM.btnToggleDark.textContent = isDark ? "🌞 Claro" : "🌙 Oscuro";
+    btn.textContent = isDark ? "🌙 Oscuro" : "🌞 Claro";
   });
 
   DOM.btnEnviar.onclick = () => cambiarPaso("enviar");

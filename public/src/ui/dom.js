@@ -32,7 +32,7 @@ export const DOM = {
   btnRecalcular: document.getElementById('btnRecalcular'),
   btnWhats: document.getElementById('btnWhats'),
   btnVolverGlobal: document.getElementById('btnVolverGlobal'),
-  btnToggleDark: document.getElementById('toggleDark'),
+  btnToggleDark: document.getElementById("modoToggle"),
 
   // Inputs / ayudas
   inputMonto: document.getElementById('inputMonto'),
