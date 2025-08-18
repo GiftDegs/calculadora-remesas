@@ -96,14 +96,8 @@ app.post("/api/guardar-snapshot", async (req, res) => {
   for (const k of Object.keys(crucesNuevos)) {
     const n = Number(crucesNuevos[k]);
     if (!Number.isFinite(n)) continue;
-    let f = null;
-    if (n >= 1) f = +n.toFixed(1);
-    else if (n >= 0.01) f = +n.toFixed(3);
-    else if (n >= 0.00099) f = +n.toFixed(5);
-    else f = +n.toFixed(6);
-    crucesNuevosFormateados[k] = f;
-  }
-
+   crucesNuevosFormateados[k] = formatearTasa(n); // ✔️
+}
   // 3) Merge con cruces anteriores
   const crucesCompletos = { ...(snapshotAnterior.cruces || {}), ...crucesNuevosFormateados };
 

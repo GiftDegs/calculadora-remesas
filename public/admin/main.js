@@ -42,7 +42,6 @@ function formatearTasa(v) {
   if (n >= 0.00099) return +n.toFixed(5);
   return +n.toFixed(6);
 }
-
 function iconoCambio(n, p) {
   if (p == null || !Number.isFinite(p)) return "⏺";
   if (n > p) return "🔼";
@@ -310,7 +309,7 @@ function escribirCruces() {
           ? (1 + ajuste / 100)
           : (1 - ajuste / 100);
 
-      const tasaFinal = Number((tasaBase * factor).toFixed(2));
+      const tasaFinal = parseFloat((tasaBase * factor).toFixed(6));
 
       const clave = `${origen}-${destino}`;
       const anterior = crucesAnteriores[clave];
