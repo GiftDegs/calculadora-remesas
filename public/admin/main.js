@@ -211,7 +211,7 @@ function renderTarjetasPaises(modoEdicion = false) {
         data-fi="${fiat}"
         data-tipo="${tipo}"
         value="${valor ?? ""}"
-        class="w-full px-2 py-1 mt-1 border border-gray-300 rounded-md text-center bg-white ${claseColor}
+        class="w-full px-2 py-1 mt-1 border border-gray-300 rounded-md text-center text-black bg-white ${claseColor}
                focus:outline-none focus:ring-2 focus:ring-blue-400" />
     `;
   };
@@ -240,7 +240,7 @@ function renderTarjetasPaises(modoEdicion = false) {
           </div>
         </div>
       </div>
-      <div class="mt-2 text-[11px] text-gray-700 flex justify-between items-center">
+      <div class="mt-2 text-[11px] text-black-700 flex justify-between items-center">
         <span>Ajuste (%)</span>
         ${
           modoEdicion
@@ -249,11 +249,8 @@ function renderTarjetasPaises(modoEdicion = false) {
                  data-fi="${p.fiat}"
                  data-tipo="ajuste"
                  value="${ajuste}"
-                 class="w-72 text-center text-2xl font-semibold px-6 py-4 rounded-xl border
-       border-blue-300 shadow bg-white/60 text-gray-800 placeholder-gray-400
-       dark:bg-white/10 dark:text-white dark:placeholder-gray-400
-       dark:border-blue-300/40 backdrop-blur-md
-       focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+                 class="w-24 text-center font-semibold text-sm px-2 py-1.5 rounded-md border border-gray-300 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+ 
  />`
             : `<div class="w-12 text-right font-semibold text-gray-800">${ajuste} %</div>`
         }
