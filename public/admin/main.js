@@ -310,7 +310,7 @@ function escribirCruces() {
           ? (1 + ajuste / 100)
           : (1 - ajuste / 100);
 
-      const tasaFinal = parseFloat((tasaBase * factor).toFixed(8));
+      const tasaFinal = Number((tasaBase * factor).toFixed(2));
 
       const clave = `${origen}-${destino}`;
       const anterior = crucesAnteriores[clave];
