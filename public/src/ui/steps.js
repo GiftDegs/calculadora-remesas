@@ -517,7 +517,7 @@ function ejecutarCalculo() {
 
   const mensaje = mode === "enviar"
     ? `<div class="text-sm italic text-gray-500 dark:text-gray-400">Enviando desde ${o.nombre}</div>
-       <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">$${montoFmt} ${o.codigo}</div>
+       <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">${montoFmt} ${o.codigo}</div>
        <div class="text-base text-gray-600 dark:text-gray-300 mt-1">recibirás</div>
        <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">${d.codigo} ${calcFmt}</div>
        ${refBadge}
@@ -525,7 +525,7 @@ function ejecutarCalculo() {
     : `<div class="text-sm italic text-gray-500 dark:text-gray-400">Para recibir en ${d.nombre}</div>
        <div class="text-3xl font-semibold text-blue-800 dark:text-blue-400">${d.codigo} ${montoFmt}</div>
        <div class="text-base text-gray-600 dark:text-gray-300 mt-1">debes enviar</div>
-       <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">$${calcFmt} ${o.codigo}</div>
+       <div class="text-4xl font-extrabold text-blue-900 dark:text-blue-200">${calcFmt} ${o.codigo}</div>
        ${refBadge}
        <div class="text-sm italic text-gray-500 dark:text-gray-400 mt-4">Calculado con la tasa del día ${fecha} — <span class="font-semibold text-blue-800 dark:text-blue-400">${tasaFmt}</span></div>`;
 
