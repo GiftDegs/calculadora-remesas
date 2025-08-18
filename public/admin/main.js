@@ -200,22 +200,23 @@ function renderTarjetasPaises(modoEdicion = false) {
 
   cont.innerHTML = "";
 
-  const renderInput = (valor, color, tipo, fiat) => {
-    const claseColor = color === "green" ? "text-green-900" : "text-red-900";
-    const texto = formatearTasa(valor);
-    if (!modoEdicion) {
-      return `<div class="mt-1 font-bold text-2xl leading-tight ${claseColor}">${texto}</div>`;
-    }
-    return `
-      <input type="number"
-        step="any"
-        data-fi="${fiat}"
-        data-tipo="${tipo}"
-        value="${valor ?? ""}"
-        class="w-full px-2 py-1 mt-1 border border-gray-300 rounded-md text-center text-black bg-white ${claseColor}
-               focus:outline-none focus:ring-2 focus:ring-blue-400" />
-    `;
-  };
+const renderInput = (valor, color, tipo, fiat) => {
+  const claseColor = color === "green" ? "text-green-900" : "text-red-900";
+  const texto = formatearTasa(valor);
+  if (!modoEdicion) {
+    return `<div class="mt-1 font-bold text-xl sm:text-2xl leading-tight ${claseColor} break-words truncate max-w-full">${texto}</div>`;
+  }
+  return `
+    <input type="number"
+      step="any"
+      data-fi="${fiat}"
+      data-tipo="${tipo}"
+      value="${valor ?? ""}"
+      class="w-full px-2 py-1 mt-1 border border-gray-300 rounded-md text-center text-black bg-white ${claseColor}
+             text-sm truncate focus:outline-none focus:ring-2 focus:ring-blue-400" />
+  `;
+};
+
 
   paises.forEach(p => {
     const datos = datosPaises[p.fiat] || {};
@@ -225,12 +226,12 @@ function renderTarjetasPaises(modoEdicion = false) {
     const emoji = p.emoji || "🌐";
 
     const tarjeta = document.createElement("div");
-    tarjeta.className = "bg-white text-gray-900 shadow-md rounded-md p-3 sm:p-4 flex flex-col justify-between border border-gray-200 min-h-[140px]";
+    tarjeta.className = "backdrop-card text-gray-900 p-3 sm:p-4 flex flex-col justify-between min-h-[140px]";
 
     tarjeta.innerHTML = `
       <div>
         <h3 class="text-sm font-semibold tracking-wide mb-2">${emoji} ${p.nombre} (${p.fiat})</h3>
-        <div class="flex flex-row gap-2">
+        <div class="flex flex-col gap-2">
           <div class="flex-1 bg-green-100 border border-green-300 rounded-md p-2 text-center text-xs">
             <h4 class="text-[11px] font-medium text-green-700">Compra</h4>
             ${renderInput(compra, "green", "compra", p.fiat)}
@@ -326,7 +327,7 @@ function escribirCruces() {
       const flagDestino = paises.find(p => p.fiat === destino)?.emoji || "";
 
       const card = document.createElement("div");
-      card.className = "relative bg-white rounded-md shadow-sm p-3 border border-gray-200 text-sm sm:text-base transition-transform duration-200 hover:scale-[1.01]";
+      card.className = "relative backdrop-card p-3 text-sm sm:text-base transition-transform duration-200 hover:scale-[1.01]";
       card.innerHTML = `
         <span class="absolute top-2 right-2 text-xs sm:text-sm opacity-70 ${color} select-none pointer-events-none">${emoji}</span>
 

@@ -20,6 +20,37 @@
       };
     </script>
     <script src="/admin/main.js" defer></script>
+
+    <style>
+  .backdrop-card {
+    background-color: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(12px);
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .backdrop-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .backdrop-input {
+    background-color: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(200, 200, 255, 0.2);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    backdrop-filter: blur(6px);
+    color: #111;
+  }
+
+  .dark .backdrop-input {
+    background-color: rgba(50, 50, 80, 0.4);
+    color: #eee;
+  }
+</style>
+
   </head>
 
   <body class="bg-bgLight dark:bg-bgDark text-gray-900 dark:text-gray-100 transition-colors duration-300 p-6">
@@ -60,6 +91,14 @@
         </button>
       </div>
 
+            <!-- Popover País -->
+      <div id="popover-paises" class="absolute bg-white dark:bg-gray-800 rounded shadow-lg w-64 max-h-80 overflow-auto hidden z-50">
+        <ul id="lista-paises" class="divide-y divide-gray-200 dark:divide-gray-600"></ul>
+      </div>
+
+      <!-- Tarjetas -->
+      <div id="tarjetas-paises" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10"></div>
+
       <!-- Selector país -->
       <div class="flex flex-wrap gap-4 mb-10 items-center">
         <button id="btn-seleccionar-pais" class="px-4 py-2 bg-primary text-white rounded-lg shadow hover:bg-indigo-700">
@@ -73,15 +112,7 @@
           🧹 Limpiar filtros
         </button>
       </div>
-
-      <!-- Popover País -->
-      <div id="popover-paises" class="absolute bg-white dark:bg-gray-800 rounded shadow-lg w-64 max-h-80 overflow-auto hidden z-50">
-        <ul id="lista-paises" class="divide-y divide-gray-200 dark:divide-gray-600"></ul>
-      </div>
-
-      <!-- Tarjetas -->
-      <div id="tarjetas-paises" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-10"></div>
-
+      
       <h2 class="text-2xl font-bold mb-4">💱 Tasas de Cruce</h2>
       <div class="space-y-4 mb-20">
         <div id="cruce-encabezado" class="text-lg font-semibold"></div>
